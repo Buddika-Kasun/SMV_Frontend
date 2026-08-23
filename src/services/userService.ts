@@ -1,7 +1,9 @@
+import axios from 'axios';
 import { User, UserRole } from '../types';
 
 const USERS_STORAGE_KEY = 'smv_holdings_users_v2';
 const SESSION_STORAGE_KEY = 'smv_holdings_current_session_v2';
+const AUTH_TOKEN_KEY = 'auth_token';
 
 export const INITIAL_USERS: User[] = [
   {
@@ -47,15 +49,26 @@ export const INITIAL_USERS: User[] = [
 
 export const userService = {
   /**
+   * Fetch all registered users from backend or local fallback
+   */
+  async fetchUsersFromBackend(): Promise<User[]> {
+    try {
+      const response = await axios.get<{ success: boolean; users: User[] }>('/api/users');
+      if (response.data && response.data.users) {
+        this.saveUsers(response.data.users);
+        return response.data.users;
+      }
+    } catch (err) {
+      console.warn('[User Service] Backend fetch failed, using local storage:', err);
+    }
+    return this.getUsers();
+  },
+
+  /**
    * Fetch all registered users from storage
    */
   getUsers(): User[] {
     try {
-      // Also clean up legacy v1 storage if present to remove test accounts
-      if (localStorage.getItem('smv_holdings_users_v1')) {
-        localStorage.removeItem('smv_holdings_users_v1');
-      }
-
       const stored = localStorage.getItem(USERS_STORAGE_KEY);
       if (!stored) {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
@@ -63,24 +76,20 @@ export const userService = {
       }
       const parsed: User[] = JSON.parse(stored);
       
-      // Ensure the original sysadmin exists and is the sole admin
       const hasSysAdmin = parsed.some(u => u.username.toLowerCase() === 'sysadmin');
       let cleaned = parsed;
       if (!hasSysAdmin) {
         cleaned = [INITIAL_USERS[0], ...parsed];
       }
 
-      // Filter out any other admin accounts that were created during testing
-      // Strictly keep only the original sysadmin as admin
+      // Filter out any extra admin accounts: strictly keep only sysadmin
       cleaned = cleaned.filter(u => {
         if (u.role === 'admin' && u.username.toLowerCase() !== 'sysadmin') {
-          // Remove test admin accounts
           return false;
         }
         return true;
       });
 
-      // Save sanitized list if changes were made
       if (cleaned.length !== parsed.length) {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleaned));
       }
@@ -92,9 +101,14 @@ export const userService = {
   },
 
   /**
-   * Reset user database back to original defaults (sysadmin, manager1, staff1)
+   * Reset user database back to original defaults
    */
-  resetToDefaults(): User[] {
+  async resetToDefaults(): Promise<User[]> {
+    try {
+      await axios.post('/api/users/reset-defaults');
+    } catch {
+      // ignore
+    }
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
       return INITIAL_USERS;
@@ -122,7 +136,6 @@ export const userService = {
       const stored = localStorage.getItem(SESSION_STORAGE_KEY);
       if (stored) {
         const user = JSON.parse(stored);
-        // Verify user is still active in users list
         const allUsers = this.getUsers();
         const found = allUsers.find(u => u.id === user.id);
         if (found && found.isActive) {
@@ -138,21 +151,44 @@ export const userService = {
   /**
    * Set current logged-in user
    */
-  setCurrentUser(user: User | null) {
+  setCurrentUser(user: User | null, token?: string) {
     if (user) {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
+      if (token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+      }
     } else {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
     }
   },
 
   /**
-   * Authenticate user by username and password
+   * Authenticate user by username and password (tries backend then local)
    */
-  login(username: string, password: string): { success: boolean; error?: string; user?: User } {
+  async login(username: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> {
     const trimmedUser = username.trim().toLowerCase();
+
+    // 1. Attempt Backend Auth
+    try {
+      const response = await axios.post<{ success: boolean; token: string; user: User; message?: string }>('/api/auth/login', {
+        username: trimmedUser,
+        password,
+      });
+
+      if (response.data.success && response.data.user) {
+        this.setCurrentUser(response.data.user, response.data.token);
+        return { success: true, user: response.data.user };
+      }
+    } catch (apiErr: any) {
+      const errorMsg = apiErr.response?.data?.error;
+      if (errorMsg && (errorMsg.includes('password') || errorMsg.includes('deactivated') || errorMsg.includes('Invalid'))) {
+        return { success: false, error: errorMsg };
+      }
+    }
+
+    // 2. Local Fallback Auth
     const allUsers = this.getUsers();
-    
     const user = allUsers.find(u => u.username.toLowerCase() === trimmedUser);
 
     if (!user) {
@@ -167,7 +203,6 @@ export const userService = {
       return { success: false, error: 'Incorrect password. Please try again.' };
     }
 
-    // Update last login timestamp
     const nowStr = new Date().toLocaleString('en-LK', { dateStyle: 'short', timeStyle: 'short' });
     const updatedUsers = allUsers.map(u => u.id === user.id ? { ...u, lastLogin: nowStr } : u);
     this.saveUsers(updatedUsers);
@@ -188,7 +223,7 @@ export const userService = {
   /**
    * Create a new user (Admin / Manager only)
    */
-  createUser(data: {
+  async createUser(data: {
     username: string;
     password: string;
     fullName: string;
@@ -196,24 +231,40 @@ export const userService = {
     designation: string;
     email?: string;
     phone?: string;
-  }): { success: boolean; error?: string; user?: User } {
+  }): Promise<{ success: boolean; error?: string; user?: User }> {
     const trimmedUser = data.username.trim().toLowerCase();
     if (!trimmedUser || !data.password || !data.fullName) {
       return { success: false, error: 'Username, password, and full name are required.' };
     }
 
+    // Attempt backend creation
+    try {
+      const response = await axios.post<{ success: boolean; user: User; error?: string }>('/api/users', data);
+      if (response.data.success && response.data.user) {
+        const users = this.getUsers();
+        const updated = [response.data.user, ...users.filter(u => u.id !== response.data.user.id)];
+        this.saveUsers(updated);
+        return { success: true, user: response.data.user };
+      }
+    } catch (apiErr: any) {
+      const errorMsg = apiErr.response?.data?.error;
+      if (errorMsg) {
+        return { success: false, error: errorMsg };
+      }
+    }
+
+    // Local fallback
     const users = this.getUsers();
     if (users.some(u => u.username.toLowerCase() === trimmedUser)) {
       return { success: false, error: `Username "${data.username}" is already taken.` };
     }
 
-    // STRICT RULE: There can be ONLY ONE admin role account
     if (data.role === 'admin') {
       const existingAdmin = users.find(u => u.role === 'admin');
       if (existingAdmin) {
         return { 
           success: false, 
-          error: `Only one Administrator account is permitted in the system. Currently, "${existingAdmin.fullName}" (@${existingAdmin.username}) is the sole Administrator. You can assign the "Manager" role instead for administrative access.` 
+          error: `Only one Administrator account is permitted. Currently, "${existingAdmin.fullName}" is the sole Administrator.` 
         };
       }
     }
@@ -240,7 +291,13 @@ export const userService = {
   /**
    * Update an existing user
    */
-  updateUser(userId: string, updates: Partial<User>): { success: boolean; error?: string } {
+  async updateUser(userId: string, updates: Partial<User>, newPassword?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await axios.put(`/api/users/${userId}`, { ...updates, password: newPassword });
+    } catch {
+      // fallback to local
+    }
+
     const users = this.getUsers();
     const index = users.findIndex(u => u.id === userId);
     if (index === -1) {
@@ -249,28 +306,25 @@ export const userService = {
 
     const currentUser = users[index];
 
-    // Protect sysadmin username
     if (currentUser.username === 'sysadmin' && updates.username && updates.username !== 'sysadmin') {
       return { success: false, error: 'The primary sysadmin username cannot be altered.' };
     }
 
-    // STRICT RULE: If assigning admin role, ensure no OTHER user is already admin
     if (updates.role === 'admin' && currentUser.role !== 'admin') {
       const existingAdmin = users.find(u => u.id !== userId && u.role === 'admin');
       if (existingAdmin) {
         return { 
           success: false, 
-          error: `Only one Administrator account is permitted in the system. "${existingAdmin.fullName}" (@${existingAdmin.username}) is currently the sole Administrator.` 
+          error: `Only one Administrator account is permitted. "${existingAdmin.fullName}" is currently the sole Administrator.` 
         };
       }
     }
 
-    // STRICT RULE: Cannot demote the ONLY admin or deactivate the admin
     if (currentUser.role === 'admin') {
       if (updates.role && updates.role !== 'admin') {
         return { 
           success: false, 
-          error: 'The system must always have exactly one Administrator account. To designate another user, assign the Manager role.' 
+          error: 'The system must always have exactly one Administrator account.' 
         };
       }
       if (updates.isActive === false) {
@@ -281,14 +335,11 @@ export const userService = {
       }
     }
 
-    // Check if new username collides with another user
-    if (updates.username && updates.username.toLowerCase() !== currentUser.username.toLowerCase()) {
-      if (users.some(u => u.id !== userId && u.username.toLowerCase() === updates.username!.toLowerCase())) {
-        return { success: false, error: `Username "${updates.username}" is already in use.` };
-      }
-    }
-
-    users[index] = { ...users[index], ...updates };
+    users[index] = { 
+      ...users[index], 
+      ...updates, 
+      ...(newPassword ? { password: newPassword } : {}) 
+    };
     this.saveUsers(users);
 
     return { success: true };
@@ -297,7 +348,13 @@ export const userService = {
   /**
    * Delete a user (cannot delete the admin)
    */
-  deleteUser(userId: string): { success: boolean; error?: string } {
+  async deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await axios.delete(`/api/users/${userId}`);
+    } catch {
+      // ignore
+    }
+
     const users = this.getUsers();
     const target = users.find(u => u.id === userId);
     if (!target) {
@@ -328,13 +385,6 @@ export const userService = {
     return this.getUsers().some(u => u.role === 'admin');
   },
 
-  /**
-   * Role permissions checks:
-   * - admin: All access + user management + loan approvals + dashboard
-   * - manager: All access + user management + loan approvals + dashboard (same rights as admin)
-   * - staff: can only create new payments, loan applications, early settlements, kyc repository, payments.
-   *          Cannot approve loans, cannot access dashboard, cannot access user management.
-   */
   canAccessDashboard(role: UserRole): boolean {
     return role === 'admin' || role === 'manager';
   },

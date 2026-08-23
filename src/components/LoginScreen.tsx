@@ -27,7 +27,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -41,8 +41,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const result = userService.login(username, password);
+    try {
+      const result = await userService.login(username, password);
       setIsLoading(false);
 
       if (result.success && result.user) {
@@ -54,7 +54,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       } else {
         setErrorMessage(result.error || 'Authentication failed. Please check your credentials.');
       }
-    }, 250);
+    } catch {
+      setIsLoading(false);
+      setErrorMessage('An unexpected error occurred during login. Please try again.');
+    }
   };
 
   const handleQuickFill = (u: string, p: string) => {

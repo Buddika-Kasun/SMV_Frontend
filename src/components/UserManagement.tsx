@@ -85,14 +85,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     setIsCreateModalOpen(true);
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword || !newFullName.trim()) {
       toast.error('Username, password, and full name are required.');
       return;
     }
 
-    const res = userService.createUser({
+    const res = await userService.createUser({
       username: newUsername,
       password: newPassword,
       fullName: newFullName,
@@ -122,11 +122,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
 
-    const res = userService.updateUser(selectedUser.id, {
+    const res = await userService.updateUser(selectedUser.id, {
       fullName: editFullName.trim(),
       role: editRole,
       designation: editDesignation.trim(),
@@ -150,7 +150,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     setIsPasswordModalOpen(true);
   };
 
-  const handlePasswordResetSubmit = (e: React.FormEvent) => {
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
     if (!resetPasswordValue) {
@@ -158,7 +158,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       return;
     }
 
-    const res = userService.updateUser(selectedUser.id, {
+    const res = await userService.updateUser(selectedUser.id, {
       password: resetPasswordValue,
     });
 
@@ -171,14 +171,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleToggleStatus = (u: User) => {
+  const handleToggleStatus = async (u: User) => {
     if (u.username === 'sysadmin') {
       toast.error('The primary sysadmin account cannot be deactivated.');
       return;
     }
 
     const newStatus = !u.isActive;
-    const res = userService.updateUser(u.id, { isActive: newStatus });
+    const res = await userService.updateUser(u.id, { isActive: newStatus });
     if (res.success) {
       toast.success(`User "${u.username}" ${newStatus ? 'activated' : 'deactivated'}.`);
       refreshUsers();
@@ -187,14 +187,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleDelete = (u: User) => {
+  const handleDelete = async (u: User) => {
     if (u.username === 'sysadmin') {
       toast.error('The primary sysadmin account cannot be deleted.');
       return;
     }
 
     if (window.confirm(`Are you sure you want to delete user account "${u.username}" (${u.fullName})? This action is permanent.`)) {
-      const res = userService.deleteUser(u.id);
+      const res = await userService.deleteUser(u.id);
       if (res.success) {
         toast.success(`User account "${u.username}" deleted.`);
         refreshUsers();
@@ -204,9 +204,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleResetToDefaults = () => {
+  const handleResetToDefaults = async () => {
     if (window.confirm('Reset user accounts back to canonical defaults (sysadmin, manager1, staff1)? Any test accounts will be removed.')) {
-      userService.resetToDefaults();
+      await userService.resetToDefaults();
       refreshUsers();
       toast.success('User database reset to defaults. Only original sysadmin, manager1, and staff1 retained.');
     }

@@ -16,6 +16,7 @@ import {
 } from './utils/loanUtils';
 import { recalculateConsultancyStatus } from './utils/consultancyUtils';
 import { userService } from './services/userService';
+import { loanApi } from './api/loanApi';
 
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
@@ -41,7 +42,7 @@ export default function App() {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => userService.getCurrentUser());
 
-  // Load initial state with localStorage support
+  // Load initial state with localStorage support and live backend sync
   const [loans, setLoans] = useState<Loan[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -56,6 +57,26 @@ export default function App() {
     }
     return INITIAL_LOANS;
   });
+
+  // Fetch live loans and users from backend PostgreSQL on load
+  useEffect(() => {
+    async function syncBackendData() {
+      try {
+        const serverLoans = await loanApi.getAllLoans();
+        if (serverLoans && serverLoans.length > 0) {
+          setLoans(serverLoans.map(recalculateLoanState));
+        }
+      } catch (err) {
+        console.warn('Backend sync failed on startup, using local store:', err);
+      }
+      try {
+        await userService.fetchUsersFromBackend();
+      } catch {
+        // ignore
+      }
+    }
+    syncBackendData();
+  }, []);
 
   const [consultancies, setConsultancies] = useState<ConsultancyAgreement[]>(() => {
     try {
@@ -156,7 +177,7 @@ export default function App() {
   };
 
   // Handlers
-  const handleApproveLoanRequest = (loanId: string) => {
+  const handleApproveLoanRequest = async (loanId: string) => {
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
@@ -170,16 +191,26 @@ export default function App() {
       })
     );
     toast.success(`Loan ${loanId} approved! Transferred to KYC verification.`);
+    try {
+      await loanApi.approveLoan(loanId);
+    } catch (e) {
+      console.warn('Backend approval dispatch sync error:', e);
+    }
   };
 
-  const handleRejectLoanRequest = (loanId: string) => {
+  const handleRejectLoanRequest = async (loanId: string) => {
     setLoans(prev =>
       prev.map(l => (l.id === loanId ? { ...l, status: 'Rejected' as const } : l))
     );
     toast.error(`Loan application ${loanId} has been rejected.`);
+    try {
+      await loanApi.rejectLoan(loanId);
+    } catch (e) {
+      console.warn('Backend rejection sync error:', e);
+    }
   };
 
-  const handleUpdateKYC = (loanId: string, updatedKYC: Loan['kyc']) => {
+  const handleUpdateKYC = async (loanId: string, updatedKYC: Loan['kyc']) => {
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
@@ -192,9 +223,14 @@ export default function App() {
       })
     );
     toast.success(`KYC & document compliance updated for ${loanId}`);
+    try {
+      await loanApi.updateKYC(loanId, updatedKYC);
+    } catch (e) {
+      console.warn('Backend KYC sync error:', e);
+    }
   };
 
-  const handleDisburseLoan = (loanId: string) => {
+  const handleDisburseLoan = async (loanId: string) => {
     const today = new Date().toISOString().split('T')[0];
     setLoans(prev =>
       prev.map(l => {
@@ -217,7 +253,7 @@ export default function App() {
             kyc: {
               ...l.kyc,
               isVerified: true,
-              verifiedBy: 'Officer James Sterling',
+              verifiedBy: currentUser?.fullName || 'Branch Manager',
               verifiedAt: new Date().toLocaleString(),
             },
           };
@@ -228,6 +264,11 @@ export default function App() {
       })
     );
     toast.success(`Loan ${loanId} disbursed! Active repayment ledger initialized.`);
+    try {
+      await loanApi.disburseLoan(loanId, today);
+    } catch (e) {
+      console.warn('Backend disbursement sync error:', e);
+    }
   };
 
   const handleRecordPayment = (
@@ -240,13 +281,10 @@ export default function App() {
     paymentDate: string
   ): PaymentRecord | null => {
     let createdRecord: PaymentRecord | null = null;
-    let targetLoan: Loan | null = null;
-    let remainingAfterPayment = 0;
 
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
-          targetLoan = l;
           const updatedLoan = applyPaymentToLoan(
             l,
             amount,
@@ -257,7 +295,6 @@ export default function App() {
             paymentDate
           );
           createdRecord = updatedLoan.payments[0];
-          remainingAfterPayment = updatedLoan.outstandingBalance;
           return updatedLoan;
         }
         return l;
@@ -266,44 +303,15 @@ export default function App() {
 
     toast.success(`Payment voucher generated for ${loanId}!`);
 
-    // Automated SMS Alert via Text.lk API (Commented out for now as requested)
-    /*
-    if (targetLoan) {
-      const loanObj = targetLoan as Loan;
-      const recipientPhone = loanObj.customerPhone;
-      const recipientName = loanObj.customerName;
-
-      smsService.sendPaymentNotification({
-        customerName: recipientName,
-        customerPhone: recipientPhone,
-        amount,
-        loanId,
-        referenceNumber,
-        remainingBalance: remainingAfterPayment,
-        paymentDate,
-        isFullySettled: remainingAfterPayment <= 0,
-      }).then(res => {
-        if (res.success) {
-          toast.success(`SMS payment alert sent to ${res.recipient} via Text.lk!`, {
-            icon: '📲',
-            duration: 4000,
-          });
-        } else {
-          toast(`SMS alert: ${res.message || 'Transmission queued'}`, {
-            icon: '💬',
-            duration: 3500,
-          });
-        }
-      }).catch(err => {
-        console.warn('SMS dispatch failed in background', err);
-      });
+    // Async backend persistence
+    if (createdRecord) {
+      loanApi.recordPayment(loanId, createdRecord).catch(e => console.warn('Backend payment record sync error:', e));
     }
-    */
 
     return createdRecord;
   };
 
-  const handleExecuteEarlySettlement = (
+  const handleExecuteEarlySettlement = async (
     loanId: string,
     quote: EarlySettlementQuote,
     paymentMethod: PaymentRecord['paymentMethod'],
@@ -311,12 +319,9 @@ export default function App() {
     receivedBy: string,
     notes: string
   ) => {
-    let targetLoan: Loan | null = null;
-
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
-          targetLoan = l;
           return executeEarlySettlement(
             l,
             quote,
@@ -332,38 +337,30 @@ export default function App() {
 
     toast.success(`Early payoff executed for ${loanId}. Clearance certificate generated.`);
 
-    // Automated SMS for Early Settlement (Commented out for now as requested)
-    /*
-    if (targetLoan) {
-      const loanObj = targetLoan as Loan;
-      smsService.sendPaymentNotification({
-        customerName: loanObj.customerName,
-        customerPhone: loanObj.customerPhone,
-        amount: quote.totalSettlementAmount,
+    try {
+      await loanApi.executeEarlySettlement({
         loanId,
+        quote,
+        paymentMethod,
         referenceNumber,
-        remainingBalance: 0,
-        paymentDate: quote.calculationDate || new Date().toISOString().split('T')[0],
-        isFullySettled: true,
-        isEarlySettlement: true,
-      }).then(res => {
-        if (res.success) {
-          toast.success(`Early settlement SMS sent to ${res.recipient} via Text.lk!`, {
-            icon: '📲',
-            duration: 4000,
-          });
-        }
-      }).catch(err => {
-        console.warn('Early settlement SMS background error', err);
+        receivedBy,
+        notes,
       });
+    } catch (e) {
+      console.warn('Backend early settlement sync error:', e);
     }
-    */
   };
 
-  const handleCreateNewLoan = (newLoan: Loan) => {
+  const handleCreateNewLoan = async (newLoan: Loan) => {
     setLoans(prev => [newLoan, ...prev]);
     setActiveTab('applications');
     toast.success(`New loan application #${newLoan.id} created successfully!`);
+
+    try {
+      await loanApi.createLoan(newLoan);
+    } catch (e) {
+      console.warn('Backend create loan sync error:', e);
+    }
   };
 
   const handleResetData = () => {
