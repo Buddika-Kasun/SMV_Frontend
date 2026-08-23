@@ -1,0 +1,6 @@
+{
+  "name": "SMV Holdings",
+  "description": "SMV Holdings Micro Finance Management System & Consultancy Placement Portal with LKR currency support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
