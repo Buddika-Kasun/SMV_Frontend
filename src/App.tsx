@@ -58,7 +58,8 @@ export default function App() {
     return INITIAL_LOANS;
   });
 
-  // Fetch live loans and users from backend PostgreSQL on load
+  // Optional Backend Sync (Kept in comments for future server integration)
+  /*
   useEffect(() => {
     async function syncBackendData() {
       try {
@@ -77,6 +78,7 @@ export default function App() {
     }
     syncBackendData();
   }, []);
+  */
 
   const [consultancies, setConsultancies] = useState<ConsultancyAgreement[]>(() => {
     try {
@@ -177,7 +179,7 @@ export default function App() {
   };
 
   // Handlers
-  const handleApproveLoanRequest = async (loanId: string) => {
+  const handleApproveLoanRequest = (loanId: string) => {
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
@@ -191,26 +193,20 @@ export default function App() {
       })
     );
     toast.success(`Loan ${loanId} approved! Transferred to KYC verification.`);
-    try {
-      await loanApi.approveLoan(loanId);
-    } catch (e) {
-      console.warn('Backend approval dispatch sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.approveLoan(loanId).catch(e => console.warn('Backend approval dispatch error:', e));
   };
 
-  const handleRejectLoanRequest = async (loanId: string) => {
+  const handleRejectLoanRequest = (loanId: string) => {
     setLoans(prev =>
       prev.map(l => (l.id === loanId ? { ...l, status: 'Rejected' as const } : l))
     );
     toast.error(`Loan application ${loanId} has been rejected.`);
-    try {
-      await loanApi.rejectLoan(loanId);
-    } catch (e) {
-      console.warn('Backend rejection sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.rejectLoan(loanId).catch(e => console.warn('Backend rejection sync error:', e));
   };
 
-  const handleUpdateKYC = async (loanId: string, updatedKYC: Loan['kyc']) => {
+  const handleUpdateKYC = (loanId: string, updatedKYC: Loan['kyc']) => {
     setLoans(prev =>
       prev.map(l => {
         if (l.id === loanId) {
@@ -223,14 +219,11 @@ export default function App() {
       })
     );
     toast.success(`KYC & document compliance updated for ${loanId}`);
-    try {
-      await loanApi.updateKYC(loanId, updatedKYC);
-    } catch (e) {
-      console.warn('Backend KYC sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.updateKYC(loanId, updatedKYC).catch(e => console.warn('Backend KYC sync error:', e));
   };
 
-  const handleDisburseLoan = async (loanId: string) => {
+  const handleDisburseLoan = (loanId: string) => {
     const today = new Date().toISOString().split('T')[0];
     setLoans(prev =>
       prev.map(l => {
@@ -264,11 +257,8 @@ export default function App() {
       })
     );
     toast.success(`Loan ${loanId} disbursed! Active repayment ledger initialized.`);
-    try {
-      await loanApi.disburseLoan(loanId, today);
-    } catch (e) {
-      console.warn('Backend disbursement sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.disburseLoan(loanId, today).catch(e => console.warn('Backend disbursement sync error:', e));
   };
 
   const handleRecordPayment = (
@@ -303,15 +293,15 @@ export default function App() {
 
     toast.success(`Payment voucher generated for ${loanId}!`);
 
-    // Async backend persistence
-    if (createdRecord) {
-      loanApi.recordPayment(loanId, createdRecord).catch(e => console.warn('Backend payment record sync error:', e));
-    }
+    // Future Backend Sync:
+    // if (createdRecord) {
+    //   loanApi.recordPayment(loanId, createdRecord).catch(e => console.warn('Backend payment record sync error:', e));
+    // }
 
     return createdRecord;
   };
 
-  const handleExecuteEarlySettlement = async (
+  const handleExecuteEarlySettlement = (
     loanId: string,
     quote: EarlySettlementQuote,
     paymentMethod: PaymentRecord['paymentMethod'],
@@ -337,30 +327,18 @@ export default function App() {
 
     toast.success(`Early payoff executed for ${loanId}. Clearance certificate generated.`);
 
-    try {
-      await loanApi.executeEarlySettlement({
-        loanId,
-        quote,
-        paymentMethod,
-        referenceNumber,
-        receivedBy,
-        notes,
-      });
-    } catch (e) {
-      console.warn('Backend early settlement sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.executeEarlySettlement({ loanId, quote, paymentMethod, referenceNumber, receivedBy, notes })
+    //   .catch(e => console.warn('Backend early settlement sync error:', e));
   };
 
-  const handleCreateNewLoan = async (newLoan: Loan) => {
+  const handleCreateNewLoan = (newLoan: Loan) => {
     setLoans(prev => [newLoan, ...prev]);
     setActiveTab('applications');
     toast.success(`New loan application #${newLoan.id} created successfully!`);
 
-    try {
-      await loanApi.createLoan(newLoan);
-    } catch (e) {
-      console.warn('Backend create loan sync error:', e);
-    }
+    // Future Backend Sync:
+    // loanApi.createLoan(newLoan).catch(e => console.warn('Backend create loan sync error:', e));
   };
 
   const handleResetData = () => {

@@ -7,12 +7,9 @@ import {
   EyeOff, 
   ShieldCheck, 
   ArrowRight, 
-  KeyRound,
-  Sparkles,
-  CheckCircle2,
-  Users
+  KeyRound 
 } from 'lucide-react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { userService } from '../services/userService';
 import toast from 'react-hot-toast';
 
@@ -58,12 +55,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       setIsLoading(false);
       setErrorMessage('An unexpected error occurred during login. Please try again.');
     }
-  };
-
-  const handleQuickFill = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMessage('');
   };
 
   return (
@@ -116,7 +107,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="Enter your username (e.g. sysadmin)"
+                  placeholder="Enter your username"
                   autoComplete="username"
                   className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-hidden transition font-mono text-xs"
                 />
@@ -163,75 +154,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Credentials Panel */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span className="font-semibold text-slate-300 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-blue-400" />
-                Quick Test Accounts:
-              </span>
-              <span>Click to auto-fill</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              
-              {/* Sysadmin */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('sysadmin', 'admin123')}
-                className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 text-left transition group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">SysAdmin</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                    admin
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-mono mt-1 group-hover:text-slate-400">
-                  sysadmin / admin123
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5">All Rights & Users</div>
-              </button>
-
-              {/* Manager */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('manager1', 'manager123')}
-                className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-800/50 text-left transition group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">Manager</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    manager
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-mono mt-1 group-hover:text-slate-400">
-                  manager1 / manager123
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5">Approvals & Dashboard</div>
-              </button>
-
-              {/* Staff */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('staff1', 'staff123')}
-                className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-800/50 text-left transition group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">Staff</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-purple-500/20 text-purple-300 border border-purple-400/30">
-                    staff
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-mono mt-1 group-hover:text-slate-400">
-                  staff1 / staff123
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5">Payments & KYC</div>
-              </button>
-
-            </div>
-          </div>
 
         </div>
 

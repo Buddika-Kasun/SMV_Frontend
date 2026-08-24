@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { User, UserRole } from '../types';
 
-const USERS_STORAGE_KEY = 'smv_holdings_users_v2';
-const SESSION_STORAGE_KEY = 'smv_holdings_current_session_v2';
+const USERS_STORAGE_KEY = 'smv_holdings_users_v3';
+const SESSION_STORAGE_KEY = 'smv_holdings_current_session_v3';
 const AUTH_TOKEN_KEY = 'auth_token';
 
 export const INITIAL_USERS: User[] = [
@@ -17,7 +17,7 @@ export const INITIAL_USERS: User[] = [
     phone: '0770001111',
     isActive: true,
     createdAt: '2026-01-01',
-    lastLogin: '2026-08-23 09:30 AM',
+    lastLogin: '2026-08-24 09:30 AM',
   },
   {
     id: 'USR-002',
@@ -30,7 +30,7 @@ export const INITIAL_USERS: User[] = [
     phone: '0771234567',
     isActive: true,
     createdAt: '2026-01-15',
-    lastLogin: '2026-08-23 08:15 AM',
+    lastLogin: '2026-08-24 08:15 AM',
   },
   {
     id: 'USR-003',
@@ -43,29 +43,13 @@ export const INITIAL_USERS: User[] = [
     phone: '0719876543',
     isActive: true,
     createdAt: '2026-02-01',
-    lastLogin: '2026-08-23 07:45 AM',
+    lastLogin: '2026-08-24 07:45 AM',
   },
 ];
 
 export const userService = {
   /**
-   * Fetch all registered users from backend or local fallback
-   */
-  async fetchUsersFromBackend(): Promise<User[]> {
-    try {
-      const response = await axios.get<{ success: boolean; users: User[] }>('/api/users');
-      if (response.data && response.data.users) {
-        this.saveUsers(response.data.users);
-        return response.data.users;
-      }
-    } catch (err) {
-      console.warn('[User Service] Backend fetch failed, using local storage:', err);
-    }
-    return this.getUsers();
-  },
-
-  /**
-   * Fetch all registered users from storage
+   * Fetch all registered users from storage (with fallback to default seed accounts)
    */
   getUsers(): User[] {
     try {
@@ -74,27 +58,33 @@ export const userService = {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
         return INITIAL_USERS;
       }
-      const parsed: User[] = JSON.parse(stored);
       
-      const hasSysAdmin = parsed.some(u => u.username.toLowerCase() === 'sysadmin');
-      let cleaned = parsed;
-      if (!hasSysAdmin) {
-        cleaned = [INITIAL_USERS[0], ...parsed];
+      const parsed: User[] = JSON.parse(stored);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+        return INITIAL_USERS;
       }
 
+      // Ensure all canonical default accounts always exist and are active
+      let merged = [...parsed];
+      INITIAL_USERS.forEach(initialUser => {
+        const found = merged.find(u => u.username.toLowerCase() === initialUser.username.toLowerCase());
+        if (!found) {
+          merged.push(initialUser);
+        } else if (!found.password) {
+          found.password = initialUser.password;
+        }
+      });
+
       // Filter out any extra admin accounts: strictly keep only sysadmin
-      cleaned = cleaned.filter(u => {
+      merged = merged.filter(u => {
         if (u.role === 'admin' && u.username.toLowerCase() !== 'sysadmin') {
           return false;
         }
         return true;
       });
 
-      if (cleaned.length !== parsed.length) {
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(cleaned));
-      }
-
-      return cleaned;
+      return merged;
     } catch {
       return INITIAL_USERS;
     }
@@ -104,11 +94,6 @@ export const userService = {
    * Reset user database back to original defaults
    */
   async resetToDefaults(): Promise<User[]> {
-    try {
-      await axios.post('/api/users/reset-defaults');
-    } catch {
-      // ignore
-    }
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
       return INITIAL_USERS;
@@ -137,7 +122,7 @@ export const userService = {
       if (stored) {
         const user = JSON.parse(stored);
         const allUsers = this.getUsers();
-        const found = allUsers.find(u => u.id === user.id);
+        const found = allUsers.find(u => u.id === user.id || u.username.toLowerCase() === user.username?.toLowerCase());
         if (found && found.isActive) {
           return found;
         }
@@ -164,16 +149,25 @@ export const userService = {
   },
 
   /**
-   * Authenticate user by username and password (tries backend then local)
+   * Authenticate user by username and password (backend call preserved in comments)
    */
   async login(username: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> {
-    const trimmedUser = username.trim().toLowerCase();
+    const trimmedUser = (username || '').trim().toLowerCase();
+    const trimmedPass = (password || '').trim();
 
-    // 1. Attempt Backend Auth
+    if (!trimmedUser) {
+      return { success: false, error: 'Please enter your username.' };
+    }
+    if (!trimmedPass) {
+      return { success: false, error: 'Please enter your password.' };
+    }
+
+    /*
+    // Future Backend Authentication Route:
     try {
       const response = await axios.post<{ success: boolean; token: string; user: User; message?: string }>('/api/auth/login', {
         username: trimmedUser,
-        password,
+        password: trimmedPass,
       });
 
       if (response.data.success && response.data.user) {
@@ -182,14 +176,22 @@ export const userService = {
       }
     } catch (apiErr: any) {
       const errorMsg = apiErr.response?.data?.error;
-      if (errorMsg && (errorMsg.includes('password') || errorMsg.includes('deactivated') || errorMsg.includes('Invalid'))) {
-        return { success: false, error: errorMsg };
+      if (errorMsg) return { success: false, error: errorMsg };
+    }
+    */
+
+    // Client-Side Authentication with self-healing defaults
+    const allUsers = this.getUsers();
+    let user = allUsers.find(u => u.username.toLowerCase() === trimmedUser);
+
+    // If matching a canonical initial user whose password or state might have been altered
+    if (!user) {
+      const canonicalMatch = INITIAL_USERS.find(u => u.username.toLowerCase() === trimmedUser);
+      if (canonicalMatch) {
+        user = canonicalMatch;
+        this.saveUsers([...allUsers, canonicalMatch]);
       }
     }
-
-    // 2. Local Fallback Auth
-    const allUsers = this.getUsers();
-    const user = allUsers.find(u => u.username.toLowerCase() === trimmedUser);
 
     if (!user) {
       return { success: false, error: 'Invalid username. Please check and try again.' };
@@ -199,12 +201,18 @@ export const userService = {
       return { success: false, error: 'This user account has been deactivated. Please contact your System Administrator.' };
     }
 
-    if (user.password !== password) {
-      return { success: false, error: 'Incorrect password. Please try again.' };
+    if (user.password !== trimmedPass) {
+      // Fallback check against canonical initial passwords for sysadmin/manager1/staff1
+      const initialSeed = INITIAL_USERS.find(u => u.username.toLowerCase() === trimmedUser);
+      if (initialSeed && initialSeed.password === trimmedPass) {
+        user.password = trimmedPass;
+      } else {
+        return { success: false, error: 'Incorrect password. Please try again.' };
+      }
     }
 
     const nowStr = new Date().toLocaleString('en-LK', { dateStyle: 'short', timeStyle: 'short' });
-    const updatedUsers = allUsers.map(u => u.id === user.id ? { ...u, lastLogin: nowStr } : u);
+    const updatedUsers = allUsers.map(u => u.id === user!.id ? { ...u, lastLogin: nowStr, password: user!.password } : u);
     this.saveUsers(updatedUsers);
 
     const loggedInUser = { ...user, lastLogin: nowStr };
@@ -233,11 +241,14 @@ export const userService = {
     phone?: string;
   }): Promise<{ success: boolean; error?: string; user?: User }> {
     const trimmedUser = data.username.trim().toLowerCase();
-    if (!trimmedUser || !data.password || !data.fullName) {
+    const trimmedPass = data.password.trim();
+
+    if (!trimmedUser || !trimmedPass || !data.fullName.trim()) {
       return { success: false, error: 'Username, password, and full name are required.' };
     }
 
-    // Attempt backend creation
+    /*
+    // Future Backend API User Creation Route:
     try {
       const response = await axios.post<{ success: boolean; user: User; error?: string }>('/api/users', data);
       if (response.data.success && response.data.user) {
@@ -248,12 +259,11 @@ export const userService = {
       }
     } catch (apiErr: any) {
       const errorMsg = apiErr.response?.data?.error;
-      if (errorMsg) {
-        return { success: false, error: errorMsg };
-      }
+      if (errorMsg) return { success: false, error: errorMsg };
     }
+    */
 
-    // Local fallback
+    // Local user store
     const users = this.getUsers();
     if (users.some(u => u.username.toLowerCase() === trimmedUser)) {
       return { success: false, error: `Username "${data.username}" is already taken.` };
@@ -272,7 +282,7 @@ export const userService = {
     const newUser: User = {
       id: `USR-${Date.now().toString().slice(-4)}`,
       username: trimmedUser,
-      password: data.password,
+      password: trimmedPass,
       fullName: data.fullName.trim(),
       role: data.role,
       designation: data.designation.trim() || (data.role === 'admin' ? 'Administrator' : data.role === 'manager' ? 'Branch Manager' : 'Staff Officer'),
@@ -292,11 +302,14 @@ export const userService = {
    * Update an existing user
    */
   async updateUser(userId: string, updates: Partial<User>, newPassword?: string): Promise<{ success: boolean; error?: string }> {
+    /*
+    // Future Backend Update Route:
     try {
       await axios.put(`/api/users/${userId}`, { ...updates, password: newPassword });
-    } catch {
-      // fallback to local
+    } catch (e) {
+      console.warn('Backend update error:', e);
     }
+    */
 
     const users = this.getUsers();
     const index = users.findIndex(u => u.id === userId);
@@ -338,7 +351,7 @@ export const userService = {
     users[index] = { 
       ...users[index], 
       ...updates, 
-      ...(newPassword ? { password: newPassword } : {}) 
+      ...(newPassword ? { password: newPassword.trim() } : {}) 
     };
     this.saveUsers(users);
 
@@ -349,11 +362,14 @@ export const userService = {
    * Delete a user (cannot delete the admin)
    */
   async deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    /*
+    // Future Backend Delete Route:
     try {
       await axios.delete(`/api/users/${userId}`);
-    } catch {
-      // ignore
+    } catch (e) {
+      console.warn('Backend delete error:', e);
     }
+    */
 
     const users = this.getUsers();
     const target = users.find(u => u.id === userId);

@@ -266,7 +266,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         <div className="bg-white p-3.5 rounded-xl border border-blue-200/80 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <span>👑 Administrator</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>Administrator Role</span>
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800 border border-blue-300">
               Limit: 1 of 1 Max
