@@ -11,7 +11,6 @@ interface HeaderProps {
   onSelectLoan: (loan: Loan) => void;
   currentUser: User;
   onLogout: () => void;
-  onOpenSMSModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({

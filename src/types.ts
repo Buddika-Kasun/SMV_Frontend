@@ -141,20 +141,6 @@ export interface Installment {
   lateFee: number;
 }
 
-export interface SMSLogEntry {
-  id: string;
-  timestamp: string;
-  recipient: string;
-  originalPhone: string;
-  message: string;
-  loanId?: string;
-  customerName?: string;
-  amount?: number;
-  status: 'DELIVERED' | 'SENT' | 'FAILED';
-  gatewayResponse?: any;
-  error?: string;
-}
-
 export interface PaymentRecord {
   id: string;
   loanId: string;
@@ -169,9 +155,6 @@ export interface PaymentRecord {
   allocatedInterest: number;
   allocatedLateFee: number;
   installmentNumbersCovered: number[];
-  smsStatus?: 'SENT' | 'FAILED' | 'PENDING' | 'SKIPPED';
-  smsRecipient?: string;
-  smsMessage?: string;
 }
 
 export interface EarlySettlementQuote {

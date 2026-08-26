@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -13,33 +13,44 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  AlertCircle,
-  X,
-  Phone,
-  Mail,
-  Briefcase,
-  User as UserIcon,
-  ShieldAlert,
-  RotateCcw
+  X, 
+  Phone, 
+  Mail, 
+  RotateCcw 
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { userService } from '../services/userService';
+import { Pagination } from './common/Pagination';
+import { ConfirmModal } from './common/ConfirmModal';
 import toast from 'react-hot-toast';
 
 interface UserManagementProps {
   currentUser: User;
 }
 
+const PAGE_SIZE = 10;
+
+/**
+ * System User Management & Security Access Control
+ * Includes max-10 rows pagination and warning/confirmation modals for delete, password update, status toggle, and defaults reset.
+ */
 export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
   
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Confirmation Modals State
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToToggleStatus, setUserToToggleStatus] = useState<User | null>(null);
+  const [isResetDefaultsConfirmOpen, setIsResetDefaultsConfirmOpen] = useState(false);
+  const [isPasswordChangeConfirmOpen, setIsPasswordChangeConfirmOpen] = useState(false);
 
   // New User Form State
   const [newUsername, setNewUsername] = useState('');
@@ -72,6 +83,35 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   useEffect(() => {
     refreshUsers();
   }, []);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+      const q = search.toLowerCase();
+      const matchesSearch = 
+        u.username.toLowerCase().includes(q) ||
+        u.fullName.toLowerCase().includes(q) ||
+        u.designation.toLowerCase().includes(q) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.includes(q));
+      return matchesRole && matchesSearch;
+    });
+  }, [users, roleFilter, search]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
+  const handleRoleFilterChange = (role: 'all' | UserRole) => {
+    setRoleFilter(role);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    setCurrentPage(1);
+  };
 
   const handleOpenCreate = () => {
     setNewUsername('');
@@ -150,17 +190,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     setIsPasswordModalOpen(true);
   };
 
-  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+  const handlePasswordResetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
     if (!resetPasswordValue) {
       toast.error('Please provide a new password.');
       return;
     }
+    setIsPasswordChangeConfirmOpen(true);
+  };
+
+  const handleConfirmPasswordReset = async () => {
+    if (!selectedUser || !resetPasswordValue) return;
 
     const res = await userService.updateUser(selectedUser.id, {
       password: resetPasswordValue,
     });
+
+    setIsPasswordChangeConfirmOpen(false);
 
     if (res.success) {
       toast.success(`Password updated for user "${selectedUser.username}"!`);
@@ -171,58 +218,49 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleToggleStatus = async (u: User) => {
-    if (u.username === 'sysadmin') {
+  const handleConfirmToggleStatus = async () => {
+    if (!userToToggleStatus) return;
+    if (userToToggleStatus.username === 'sysadmin') {
       toast.error('The primary sysadmin account cannot be deactivated.');
+      setUserToToggleStatus(null);
       return;
     }
 
-    const newStatus = !u.isActive;
-    const res = await userService.updateUser(u.id, { isActive: newStatus });
+    const newStatus = !userToToggleStatus.isActive;
+    const res = await userService.updateUser(userToToggleStatus.id, { isActive: newStatus });
+    setUserToToggleStatus(null);
     if (res.success) {
-      toast.success(`User "${u.username}" ${newStatus ? 'activated' : 'deactivated'}.`);
+      toast.success(`User "${userToToggleStatus.username}" ${newStatus ? 'activated' : 'deactivated'}.`);
       refreshUsers();
     } else {
       toast.error(res.error || 'Status update failed.');
     }
   };
 
-  const handleDelete = async (u: User) => {
-    if (u.username === 'sysadmin') {
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    if (userToDelete.username === 'sysadmin') {
       toast.error('The primary sysadmin account cannot be deleted.');
+      setUserToDelete(null);
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete user account "${u.username}" (${u.fullName})? This action is permanent.`)) {
-      const res = await userService.deleteUser(u.id);
-      if (res.success) {
-        toast.success(`User account "${u.username}" deleted.`);
-        refreshUsers();
-      } else {
-        toast.error(res.error || 'Failed to delete user.');
-      }
-    }
-  };
-
-  const handleResetToDefaults = async () => {
-    if (window.confirm('Reset user accounts back to canonical defaults (sysadmin, manager1, staff1)? Any test accounts will be removed.')) {
-      await userService.resetToDefaults();
+    const res = await userService.deleteUser(userToDelete.id);
+    setUserToDelete(null);
+    if (res.success) {
+      toast.success(`User account deleted.`);
       refreshUsers();
-      toast.success('User database reset to defaults. Only original sysadmin, manager1, and staff1 retained.');
+    } else {
+      toast.error(res.error || 'Failed to delete user.');
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-    const q = search.toLowerCase();
-    const matchesSearch = 
-      u.username.toLowerCase().includes(q) ||
-      u.fullName.toLowerCase().includes(q) ||
-      u.designation.toLowerCase().includes(q) ||
-      (u.email && u.email.toLowerCase().includes(q)) ||
-      (u.phone && u.phone.includes(q));
-    return matchesRole && matchesSearch;
-  });
+  const handleConfirmResetDefaults = async () => {
+    await userService.resetToDefaults();
+    setIsResetDefaultsConfirmOpen(false);
+    refreshUsers();
+    toast.success('User database reset to defaults. Canonical sysadmin, manager1, and staff1 accounts restored.');
+  };
 
   return (
     <div className="space-y-4">
@@ -243,7 +281,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
-            onClick={handleResetToDefaults}
+            onClick={() => setIsResetDefaultsConfirmOpen(true)}
             className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-2 rounded-lg transition border border-slate-200 cursor-pointer"
             title="Reset user accounts back to standard defaults and purge test accounts"
           >
@@ -316,7 +354,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             placeholder="Search by username, full name, email..."
             className="w-full pl-8.5 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-blue-500 outline-hidden transition"
           />
@@ -326,8 +364,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           {(['all', 'admin', 'manager', 'staff'] as const).map(role => (
             <button
               key={role}
-              onClick={() => setRoleFilter(role)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition ${
+              onClick={() => handleRoleFilterChange(role)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition cursor-pointer ${
                 roleFilter === role
                   ? 'bg-slate-900 text-white shadow-2xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -339,7 +377,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Users Table with 10-Row Pagination */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -361,7 +399,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map(user => {
+                paginatedUsers.map(user => {
                   const isCurrent = currentUser.id === user.id;
 
                   return (
@@ -480,7 +518,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                           {/* Toggle Active / Deactivate (Admin cannot be deactivated) */}
                           {user.role !== 'admin' && user.username !== 'sysadmin' ? (
                             <button
-                              onClick={() => handleToggleStatus(user)}
+                              onClick={() => setUserToToggleStatus(user)}
                               className={`p-1.5 rounded-lg transition cursor-pointer ${
                                 user.isActive 
                                   ? 'text-slate-600 hover:text-rose-600 hover:bg-rose-50' 
@@ -499,7 +537,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                           {/* Delete Account (Admin cannot be deleted) */}
                           {user.role !== 'admin' && user.username !== 'sysadmin' && (
                             <button
-                              onClick={() => handleDelete(user)}
+                              onClick={() => setUserToDelete(user)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                               title="Delete Account"
                             >
@@ -517,6 +555,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             </tbody>
           </table>
         </div>
+
+        {/* User Management Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredUsers.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="user accounts"
+        />
       </div>
 
       {/* ========================================================= */}
@@ -538,7 +585,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -575,7 +622,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
@@ -685,13 +732,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition shadow-2xs"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition shadow-2xs cursor-pointer"
                 >
                   Create User
                 </button>
@@ -721,7 +768,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -756,8 +803,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(['admin', 'manager', 'staff'] as const).map(role => {
-                    // If user is currently the admin, lock role to admin
-                    // If user is not admin and an admin already exists, disable admin option
                     const isRoleDisabled = 
                       (selectedUser.role === 'admin' && role !== 'admin') ||
                       (selectedUser.role !== 'admin' && role === 'admin' && hasAdmin);
@@ -838,7 +883,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   <button
                     type="button"
                     onClick={() => setEditIsActive(!editIsActive)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                       editIsActive ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
                     }`}
                   >
@@ -851,13 +896,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition shadow-2xs"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition shadow-2xs cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -887,7 +932,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               </div>
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -910,15 +955,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition shadow-2xs"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition shadow-2xs cursor-pointer"
                 >
-                  Update Password
+                  Proceed to Reset Password
                 </button>
               </div>
             </form>
@@ -926,6 +971,76 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal: Delete User */}
+      <ConfirmModal
+        isOpen={Boolean(userToDelete)}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete User Account"
+        description="Are you sure you want to permanently remove this user account? The user will immediately lose access to the system."
+        confirmLabel="Permanently Delete"
+        cancelLabel="Keep User"
+        variant="danger"
+        details={userToDelete ? [
+          { label: 'Username', value: `@${userToDelete.username}` },
+          { label: 'Full Name', value: userToDelete.fullName },
+          { label: 'Assigned Role', value: userToDelete.role.toUpperCase() },
+          { label: 'Designation', value: userToDelete.designation || 'Staff' },
+        ] : []}
+      />
+
+      {/* Confirmation Modal: Toggle User Status */}
+      <ConfirmModal
+        isOpen={Boolean(userToToggleStatus)}
+        onClose={() => setUserToToggleStatus(null)}
+        onConfirm={handleConfirmToggleStatus}
+        title={userToToggleStatus?.isActive ? 'Deactivate User Account' : 'Activate User Account'}
+        description={userToToggleStatus?.isActive
+          ? 'Are you sure you want to disable this user account? The user will be blocked from logging into the portal.'
+          : 'Are you sure you want to reactivate this user account? The user will regain portal access.'}
+        confirmLabel={userToToggleStatus?.isActive ? 'Deactivate Account' : 'Activate Account'}
+        cancelLabel="Cancel"
+        variant={userToToggleStatus?.isActive ? 'warning' : 'success'}
+        details={userToToggleStatus ? [
+          { label: 'Username', value: `@${userToToggleStatus.username}` },
+          { label: 'Full Name', value: userToToggleStatus.fullName },
+          { label: 'Current Status', value: userToToggleStatus.isActive ? 'Active' : 'Disabled' },
+          { label: 'New Status', value: userToToggleStatus.isActive ? 'Disabled' : 'Active' },
+        ] : []}
+      />
+
+      {/* Confirmation Modal: Password Change Confirmation */}
+      <ConfirmModal
+        isOpen={isPasswordChangeConfirmOpen}
+        onClose={() => setIsPasswordChangeConfirmOpen(false)}
+        onConfirm={handleConfirmPasswordReset}
+        title="Confirm Password Update"
+        description="Are you sure you want to override and update the password for this account? The user must use the new credentials for all future sign-ins."
+        confirmLabel="Confirm Password Change"
+        cancelLabel="Cancel"
+        variant="warning"
+        details={selectedUser ? [
+          { label: 'Target Account', value: `@${selectedUser.username} (${selectedUser.fullName})` },
+          { label: 'New Password', value: resetPasswordValue },
+        ] : []}
+      />
+
+      {/* Confirmation Modal: Reset Defaults */}
+      <ConfirmModal
+        isOpen={isResetDefaultsConfirmOpen}
+        onClose={() => setIsResetDefaultsConfirmOpen(false)}
+        onConfirm={handleConfirmResetDefaults}
+        title="Reset User Database to Factory Defaults"
+        description="Are you sure you want to restore the standard system accounts (sysadmin, manager1, staff1)? Any newly created accounts or password changes will be reset."
+        confirmLabel="Reset All Users to Defaults"
+        cancelLabel="Keep Current Users"
+        variant="danger"
+        details={[
+          { label: 'Accounts Restored', value: 'sysadmin, manager1, staff1' },
+          { label: 'Default Passwords', value: 'admin123, manager123, staff123' },
+        ]}
+      />
 
     </div>
   );
