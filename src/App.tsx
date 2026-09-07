@@ -32,8 +32,6 @@ import { LoginScreen } from './components/LoginScreen';
 import { ReportsStudio } from './components/ReportsStudio';
 import { LoanDetailsModal } from './components/LoanDetailsModal';
 import { NewLoanModal } from './components/NewLoanModal';
-// import { SMSHistoryModal } from './components/SMSHistoryModal';
-// import { smsService } from './services/smsService';
 
 const STORAGE_KEY = 'instalend_finance_loans_v1';
 const CONSULTANCY_STORAGE_KEY = 'instalend_finance_consultancies_v1';
@@ -102,7 +100,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedLoanForDetails, setSelectedLoanForDetails] = useState<Loan | null>(null);
   const [isNewLoanModalOpen, setIsNewLoanModalOpen] = useState<boolean>(false);
-  const [isSMSModalOpen, setIsSMSModalOpen] = useState<boolean>(false);
   const [preselectedPaymentLoan, setPreselectedPaymentLoan] = useState<Loan | null>(null);
 
   // Handle Login

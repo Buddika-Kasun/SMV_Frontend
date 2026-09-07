@@ -8,6 +8,7 @@ import { ConsultancyAgreement, ConsultancyReturnRecord } from '../types';
 import { formatCurrency, getDaysRemaining } from '../utils/consultancyUtils';
 import { useResizableColumns, ColumnConfig } from '../hooks/useResizableColumns';
 import { ResizableTh, ResizableTableContainer } from './common/ResizableTable';
+import { Pagination } from './common/Pagination';
 import { OnboardConsultancyModal } from './OnboardConsultancyModal';
 import { ReturnFundsModal } from './ReturnFundsModal';
 import { ConsultancyDetailsModal } from './ConsultancyDetailsModal';
@@ -30,6 +31,8 @@ const CONSULTANCY_COLUMNS: ColumnConfig[] = [
   { id: 'actions', defaultWidth: 150, minWidth: 110 },
 ];
 
+const PAGE_SIZE = 10;
+
 export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
   agreements,
   onOnboardAgreement,
@@ -38,6 +41,7 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
   const [filterTab, setFilterTab] = useState<'All' | 'Active Placed' | 'Maturing Soon' | 'Maturity Reached' | 'Returned & Closed'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const {
     columnWidths,
@@ -84,6 +88,11 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
     }
     return true;
   });
+
+  const paginatedAgreements = filteredAgreements.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   return (
     <div className="space-y-4">
@@ -194,8 +203,11 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
           {(['All', 'Active Placed', 'Maturing Soon', 'Maturity Reached', 'Returned & Closed'] as const).map(tab => (
             <button
               key={tab}
-              onClick={() => setFilterTab(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+              onClick={() => {
+                setFilterTab(tab);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition cursor-pointer ${
                 filterTab === tab
                   ? 'bg-blue-600 text-white font-medium shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-100'
@@ -216,7 +228,10 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
             type="text"
             placeholder="Search name, NIC, bank, ID..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full bg-slate-50 text-slate-800 text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
           />
         </div>
@@ -245,7 +260,8 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
         </div>
       ) : viewMode === 'list' ? (
         /* LIST VIEW TABLE GRID */
-        <ResizableTableContainer
+        <div className="space-y-3">
+          <ResizableTableContainer
           maxHeight="max-h-[560px]"
           totalTableWidth={totalTableWidth}
           onResetColumns={resetToDefault}
@@ -355,7 +371,7 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredAgreements.map(agreement => {
+              {paginatedAgreements.map(agreement => {
                 const daysLeft = getDaysRemaining(agreement.maturityDate);
 
                 return (
@@ -471,11 +487,20 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
             </tbody>
           </table>
         </ResizableTableContainer>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAgreements.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="consultancy agreements"
+        />
+      </div>
       ) : (
         /* GRID VIEW (CARDS) */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAgreements.map(agreement => {
-            const daysLeft = getDaysRemaining(agreement.maturityDate);
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedAgreements.map(agreement => {
+              const daysLeft = getDaysRemaining(agreement.maturityDate);
 
             return (
               <div
@@ -596,7 +621,15 @@ export const ConsultancyStudio: React.FC<ConsultancyStudioProps> = ({
             );
           })}
         </div>
-      )}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAgreements.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="consultancy agreements"
+        />
+      </div>
+    )}
 
       {/* Onboard Client Modal */}
       {isOnboardModalOpen && (

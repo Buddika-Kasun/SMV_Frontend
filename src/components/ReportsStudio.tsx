@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Loan, ConsultancyAgreement } from '../types';
 import { formatCurrency } from '../utils/loanUtils';
-import { getDaysRemaining } from '../utils/consultancyUtils';
+// import { getDaysRemaining } from '../utils/consultancyUtils';
 import { useResizableColumns, ColumnConfig } from '../hooks/useResizableColumns';
 import { ResizableTh, ResizableTableContainer } from './common/ResizableTable';
 
@@ -16,12 +16,12 @@ interface ReportsStudioProps {
   consultancies: ConsultancyAgreement[];
 }
 
-type ReportCategory = 'All' | 'Micro Finance' | 'Consultancy' | 'Revenue & Fees' | 'Risk & Compliance';
+type ReportCategory = 'All' | 'Micro Finance' /* | 'Consultancy' | 'Revenue & Fees' */ | 'Risk & Compliance';
 
 interface ReportDefinition {
   id: string;
   title: string;
-  category: 'Micro Finance' | 'Consultancy' | 'Revenue & Fees' | 'Risk & Compliance';
+  category: 'Micro Finance' | 'Risk & Compliance' /* | 'Consultancy' | 'Revenue & Fees' */;
   icon: React.ElementType;
   description: string;
   updateFrequency: string;
@@ -107,6 +107,7 @@ const LoanPortfolioReportTable: React.FC<{ loans: Loan[] }> = ({ loans }) => {
   );
 };
 
+/*
 const REP2_COLS: ColumnConfig[] = [
   { id: 'id', defaultWidth: 130, minWidth: 95 },
   { id: 'name', defaultWidth: 180, minWidth: 130 },
@@ -248,6 +249,7 @@ const RevenueReportTable: React.FC<{ loans: Loan[] }> = ({ loans }) => {
     </ResizableTableContainer>
   );
 };
+*/
 
 const REP4_COLS: ColumnConfig[] = [
   { id: 'id', defaultWidth: 130, minWidth: 95 },
@@ -457,16 +459,18 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({ loans, consultanci
   const totalPaid = loans.reduce((sum, l) => sum + l.totalPaidAmount, 0);
   const activeLoansCount = loans.filter(l => l.status === 'Active' || l.status === 'Overdue').length;
 
-  // Report 2: Consultancy
+  /*
+  // Report 2: Consultancy (Temporarily disabled)
   const totalConsultancyPlaced = consultancies.filter(c => c.status !== 'Returned & Closed').reduce((sum, c) => sum + c.placedAmount, 0);
   const totalConsultancyReturned = consultancies.filter(c => c.status === 'Returned & Closed').reduce((sum, c) => sum + (c.returnRecord?.returnedAmount || c.placedAmount), 0);
   const maturingSoonCount = consultancies.filter(c => c.status === 'Maturing Soon' || c.status === 'Maturity Reached').length;
 
-  // Report 3: Revenue & Fees
+  // Report 3: Revenue & Fees (Temporarily disabled)
   const totalInterestCollected = loans.flatMap(l => l.payments || []).reduce((sum, p) => sum + (p?.allocatedInterest || 0), 0);
   const totalProcessingFees = loans.reduce((sum, l) => sum + (l.processingFee || 0), 0);
   const totalLateFeesCollected = loans.flatMap(l => l.payments || []).reduce((sum, p) => sum + (p?.allocatedLateFee || 0), 0);
   const totalNetRevenue = totalInterestCollected + totalProcessingFees + totalLateFeesCollected;
+  */
 
   // Report 4: Risk & Delinquency
   const overdueLoans = loans.filter(l => l.status === 'Overdue');
@@ -497,6 +501,7 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({ loans, consultanci
         { label: 'Active Loan Accounts', value: `${activeLoansCount} Accounts`, color: 'text-slate-800' },
       ],
     },
+    /*
     {
       id: 'rep-2',
       title: 'Consultancy Placement & 6-Month Capital Maturity Schedule',
@@ -524,6 +529,7 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({ loans, consultanci
         { label: 'Late Fees Collected', value: formatCurrency(totalLateFeesCollected), color: 'text-amber-900' },
       ],
     },
+    */
     {
       id: 'rep-4',
       title: 'Overdue & Delinquency Aging Ledger (Risk Management)',
@@ -646,7 +652,7 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({ loans, consultanci
         
         {/* Category Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
-          {(['All', 'Micro Finance', 'Consultancy', 'Revenue & Fees', 'Risk & Compliance'] as const).map(cat => (
+          {(['All', 'Micro Finance', /* 'Consultancy', 'Revenue & Fees', */ 'Risk & Compliance'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -768,8 +774,8 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({ loans, consultanci
 
                     {/* Conditional Table per Report */}
                     {rep.id === 'rep-1' && <LoanPortfolioReportTable loans={loans} />}
-                    {rep.id === 'rep-2' && <ConsultancyReportTable consultancies={consultancies} />}
-                    {rep.id === 'rep-3' && <RevenueReportTable loans={loans} />}
+                    {/* {rep.id === 'rep-2' && <ConsultancyReportTable consultancies={consultancies} />} */}
+                    {/* {rep.id === 'rep-3' && <RevenueReportTable loans={loans} />} */}
                     {rep.id === 'rep-4' && <RiskReportTable overdueLoans={overdueLoans} />}
                     {rep.id === 'rep-5' && <KycReportTable loans={loans} />}
                     {rep.id === 'rep-6' && <EarlySettlementReportTable earlySettledLoans={earlySettledLoans} />}

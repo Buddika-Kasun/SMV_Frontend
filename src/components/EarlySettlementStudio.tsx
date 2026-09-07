@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Loan, EarlySettlementQuote, PaymentRecord } from '../types';
 import { calculateEarlySettlementQuote, formatCurrency } from '../utils/loanUtils';
+import { Pagination } from './common/Pagination';
+import { ConfirmModal } from './common/ConfirmModal';
 import { 
   Zap, 
-  DollarSign, 
-  Percent, 
   CheckCircle, 
   Award, 
-  Calculator, 
   ShieldCheck, 
   Sparkles,
   Printer,
@@ -32,6 +31,12 @@ interface EarlySettlementStudioProps {
   ) => void;
 }
 
+const PAGE_SIZE = 10;
+
+/**
+ * Early Settlement & Payoff Calculator Studio
+ * Provides early payoff calculation, 10-row pagination, and confirmation warning modals before settling loans.
+ */
 export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   loans,
   initialSelectedLoan,
@@ -43,9 +48,10 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     initialSelectedLoan ? initialSelectedLoan.id : (activeLoans.length > 0 ? activeLoans[0].id : '')
   );
 
-  const [showQueue, setShowQueue] = useState<boolean>(true);
+  const [showQueue, setShowQueue] = useState<boolean>(false);
   const [queueViewMode, setQueueViewMode] = useState<'list' | 'grid'>('list');
   const [queueSearch, setQueueSearch] = useState<string>('');
+  const [queuePage, setQueuePage] = useState<number>(1);
 
   const currentLoan = loans.find(l => l.id === selectedLoanId);
 
@@ -56,6 +62,20 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   const [notes, setNotes] = useState<string>('Full early settlement requested by customer.');
 
   const [showClearanceCertificate, setShowClearanceCertificate] = useState<boolean>(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+
+  const filteredActiveLoans = useMemo(() => {
+    return activeLoans.filter(l => 
+      l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.kyc.nationalIdNumber.includes(queueSearch)
+    );
+  }, [activeLoans, queueSearch]);
+
+  const paginatedActiveLoans = useMemo(() => {
+    const start = (queuePage - 1) * PAGE_SIZE;
+    return filteredActiveLoans.slice(start, start + PAGE_SIZE);
+  }, [filteredActiveLoans, queuePage]);
 
   if (!currentLoan) {
     return (
@@ -69,11 +89,15 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
   // Calculate live quote based on current loan & date
   const quote: EarlySettlementQuote = calculateEarlySettlementQuote(currentLoan, settlementDate);
-
   const isAlreadySettled = currentLoan.status === 'Early Settled' || currentLoan.status === 'Settled';
 
-  const handleExecuteSettlement = (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentLoan || isAlreadySettled) return;
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmSettlement = () => {
     if (!currentLoan || isAlreadySettled) return;
 
     onExecuteEarlySettlement(
@@ -85,14 +109,9 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       notes
     );
 
+    setIsConfirmModalOpen(false);
     setShowClearanceCertificate(true);
   };
-
-  const filteredActiveLoans = activeLoans.filter(l => 
-    l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.kyc.nationalIdNumber.includes(queueSearch)
-  );
 
   return (
     <div className="space-y-4">
@@ -115,7 +134,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button
             onClick={() => setShowQueue(!showQueue)}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80 cursor-pointer"
           >
             <span>{showQueue ? 'Hide Queue' : 'Show Queue'}</span>
             {showQueue ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -154,7 +173,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/80">
                 <button
                   onClick={() => setQueueViewMode('list')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'list' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="List View"
@@ -164,7 +183,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                 </button>
                 <button
                   onClick={() => setQueueViewMode('grid')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'grid' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="Grid View"
@@ -181,7 +200,10 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                   type="text"
                   placeholder="Filter loan contract..."
                   value={queueSearch}
-                  onChange={e => setQueueSearch(e.target.value)}
+                  onChange={e => {
+                    setQueueSearch(e.target.value);
+                    setQueuePage(1);
+                  }}
                   className="w-full bg-slate-50 text-slate-800 text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none"
                 />
               </div>
@@ -205,7 +227,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredActiveLoans.map(l => {
+                  {paginatedActiveLoans.map(l => {
                     const isSelected = l.id === selectedLoanId;
 
                     return (
@@ -232,7 +254,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                         <td className="p-2.5 text-center">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelectedLoanId(l.id); }}
-                            className="text-[10px] text-blue-700 hover:underline font-bold"
+                            className="text-[10px] text-blue-700 hover:underline font-bold cursor-pointer"
                           >
                             {isSelected ? 'Calculating' : 'Quote'}
                           </button>
@@ -245,7 +267,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-56 overflow-y-auto p-1">
-              {filteredActiveLoans.map(l => {
+              {paginatedActiveLoans.map(l => {
                 const isSelected = l.id === selectedLoanId;
 
                 return (
@@ -280,6 +302,14 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               })}
             </div>
           )}
+
+          <Pagination
+            currentPage={queuePage}
+            totalItems={filteredActiveLoans.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setQueuePage}
+            itemName="eligible loan contracts"
+          />
 
         </div>
       )}
@@ -396,13 +426,13 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                 <p>Loan contract is fully settled and closed.</p>
                 <button
                   onClick={() => setShowClearanceCertificate(true)}
-                  className="bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-800 transition"
+                  className="bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-800 transition cursor-pointer"
                 >
                   Clearance Certificate
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleExecuteSettlement} className="space-y-3 text-xs">
+              <form onSubmit={handleOpenConfirm} className="space-y-3 text-xs">
                 <div>
                   <label className="text-[11px] text-slate-600 font-medium block mb-1">Payment Method</label>
                   <select
@@ -441,7 +471,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-3 rounded-lg text-xs transition shadow-2xs flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-3 rounded-lg text-xs transition shadow-2xs flex items-center justify-center gap-1.5 mt-2 cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <span>Execute Early Settlement</span>
@@ -455,6 +485,26 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
       </div>
 
+      {/* Confirmation Warning Modal */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmSettlement}
+        title="Authorize Early Loan Payoff"
+        description="Are you sure you want to execute early settlement for this contract? The entire outstanding balance will be marked as fully settled, all future interest will be waived, and an official clearance certificate will be issued."
+        confirmLabel="Authorize Early Settlement"
+        cancelLabel="Review Calculation"
+        variant="warning"
+        details={[
+          { label: 'Borrower', value: currentLoan.customerName },
+          { label: 'Loan ID', value: currentLoan.id },
+          { label: 'Total Payoff Due', value: formatCurrency(quote.totalSettlementAmount) },
+          { label: 'Waived Interest Savings', value: formatCurrency(quote.totalSavingsForCustomer) },
+          { label: 'Settlement Date', value: settlementDate },
+          { label: 'Payment Method', value: paymentMethod },
+        ]}
+      />
+
       {/* Early Settlement Clearance Certificate Modal */}
       {showClearanceCertificate && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -467,7 +517,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               </div>
               <button
                 onClick={() => setShowClearanceCertificate(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -499,7 +549,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-800 rounded-lg text-xs font-medium transition"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-800 rounded-lg text-xs font-medium transition cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-slate-600" />
                 <span>Print Certificate</span>
@@ -507,7 +557,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
               <button
                 onClick={() => setShowClearanceCertificate(false)}
-                className="px-4 py-2 bg-slate-900 text-white font-medium rounded-lg text-xs hover:bg-slate-800 transition"
+                className="px-4 py-2 bg-slate-900 text-white font-medium rounded-lg text-xs hover:bg-slate-800 transition cursor-pointer"
               >
                 Done
               </button>

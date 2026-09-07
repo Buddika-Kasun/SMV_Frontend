@@ -1,27 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Loan, PaymentRecord } from '../types';
 import { formatCurrency } from '../utils/loanUtils';
 import { useResizableColumns, ColumnConfig } from '../hooks/useResizableColumns';
 import { ResizableTh, ResizableTableContainer } from './common/ResizableTable';
 import { PaymentReceiptModal } from './PaymentReceiptModal';
+import { Pagination } from './common/Pagination';
+import { ConfirmModal } from './common/ConfirmModal';
 import { 
   CreditCard, 
   Banknote, 
-  Calendar, 
-  Building2, 
-  CheckCircle2, 
   History, 
-  AlertCircle, 
   Receipt,
-  UserCheck,
-  ArrowRight,
   LayoutGrid,
   LayoutList,
   ChevronDown,
   ChevronUp,
-  Search,
-  MessageSquare,
-  ShieldCheck
+  Search
 } from 'lucide-react';
 
 interface PaymentStudioProps {
@@ -49,6 +43,12 @@ const PAYMENT_QUEUE_COLUMNS: ColumnConfig[] = [
   { id: 'action', defaultWidth: 100, minWidth: 75 },
 ];
 
+const PAGE_SIZE = 10;
+
+/**
+ * Payment Processing & Repayments Studio
+ * Supports max-10 rows pagination and warning/confirmation modals for payment execution.
+ */
 export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   loans,
   initialSelectedLoan,
@@ -60,9 +60,14 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     initialSelectedLoan ? initialSelectedLoan.id : (activeAndOverdue.length > 0 ? activeAndOverdue[0].id : '')
   );
 
-  const [showQueue, setShowQueue] = useState<boolean>(true);
+  const [showQueue, setShowQueue] = useState<boolean>(false);
   const [queueViewMode, setQueueViewMode] = useState<'list' | 'grid'>('list');
   const [queueSearch, setQueueSearch] = useState<string>('');
+  const [queuePage, setQueuePage] = useState<number>(1);
+  const [paymentsPage, setPaymentsPage] = useState<number>(1);
+
+  // Payment Confirmation Modal State
+  const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = useState<boolean>(false);
 
   const {
     columnWidths,
@@ -94,8 +99,29 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
       const due = currentLoan.nextDueAmount || currentLoan.installments.find(i => i.status !== 'Paid')?.remainingAmount || 0;
       setPaymentAmount(due);
       setReferenceNumber(`REF-${Math.floor(100000 + Math.random() * 900000)}`);
+      setPaymentsPage(1);
     }
   }, [selectedLoanId, currentLoan]);
+
+  const filteredActiveLoans = useMemo(() => {
+    return activeAndOverdue.filter(l => 
+      l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.kyc.nationalIdNumber.includes(queueSearch)
+    );
+  }, [activeAndOverdue, queueSearch]);
+
+  const paginatedActiveLoans = useMemo(() => {
+    const start = (queuePage - 1) * PAGE_SIZE;
+    return filteredActiveLoans.slice(start, start + PAGE_SIZE);
+  }, [filteredActiveLoans, queuePage]);
+
+  // Paginated loan payments for history card
+  const loanPayments = currentLoan?.payments || [];
+  const paginatedLoanPayments = useMemo(() => {
+    const start = (paymentsPage - 1) * PAGE_SIZE;
+    return loanPayments.slice(start, start + PAGE_SIZE);
+  }, [loanPayments, paymentsPage]);
 
   if (!currentLoan) {
     return (
@@ -107,8 +133,13 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     );
   }
 
-  const handleSubmitPayment = (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentLoan || paymentAmount <= 0) return;
+    setIsConfirmPaymentOpen(true);
+  };
+
+  const handleExecutePayment = () => {
     if (!currentLoan || paymentAmount <= 0) return;
 
     const record = onRecordPayment(
@@ -121,6 +152,8 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
       paymentDate
     );
 
+    setIsConfirmPaymentOpen(false);
+
     if (record) {
       setLastPaymentRecord(record);
       setShowReceiptModal(true);
@@ -128,12 +161,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   };
 
   const nextUnpaidInstallment = currentLoan.installments.find(i => i.status !== 'Paid');
-
-  const filteredActiveLoans = activeAndOverdue.filter(l => 
-    l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.kyc.nationalIdNumber.includes(queueSearch)
-  );
+  const projectedBalance = Math.max(0, currentLoan.outstandingBalance - paymentAmount);
 
   return (
     <div className="space-y-4">
@@ -145,20 +173,20 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
               <CreditCard className="w-4 h-4" />
             </div>
-            Payment & Installment Collections Studio
+            Payment Collection & Repayment Studio
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Record installment collections, allocate interest & principal, generate payment vouchers, and update ledgers.
+            Collect scheduled installment payments, handle manual overpayments, and issue official receipts.
           </p>
         </div>
 
-        {/* Active Loan Selector & Queue Toggle */}
+        {/* Selected Loan Selector and Queue Toggle */}
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button
             onClick={() => setShowQueue(!showQueue)}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80 cursor-pointer"
           >
-            <span>{showQueue ? 'Hide Accounts' : 'Show Accounts'}</span>
+            <span>{showQueue ? 'Hide Active Loans' : 'Show Active Loans'}</span>
             {showQueue ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
@@ -169,14 +197,14 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
           >
             {activeAndOverdue.map(l => (
               <option key={l.id} value={l.id}>
-                {l.customerName} ({l.id}) - {formatCurrency(l.outstandingBalance)}
+                {l.customerName} ({l.id}) - Bal: {formatCurrency(l.outstandingBalance)}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* ACTIVE LOANS QUEUE (LIST VIEW / GRID VIEW) */}
+      {/* ACTIVE LOANS QUEUE BROWSER */}
       {showQueue && (
         <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs space-y-3">
           
@@ -186,7 +214,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                 Active Loan Accounts ({activeAndOverdue.length})
               </h3>
               <span className="text-[10px] text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded">
-                Select an account to collect payment
+                Click any row/card to select loan
               </span>
             </div>
 
@@ -195,7 +223,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
               <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/80">
                 <button
                   onClick={() => setQueueViewMode('list')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'list' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="List View"
@@ -205,7 +233,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                 </button>
                 <button
                   onClick={() => setQueueViewMode('grid')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'grid' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="Grid View"
@@ -215,178 +243,183 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                 </button>
               </div>
 
-              {/* Search */}
-              <div className="relative w-48">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+              {/* Search in active loans */}
+              <div className="relative w-full sm:w-48">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Filter loan account..."
+                  placeholder="Search borrower..."
                   value={queueSearch}
-                  onChange={e => setQueueSearch(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-800 text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none"
+                  onChange={e => {
+                    setQueueSearch(e.target.value);
+                    setQueuePage(1);
+                  }}
+                  className="w-full bg-slate-50 text-slate-800 text-xs pl-8 pr-3 py-1 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Render Active Accounts in List or Grid */}
+          {/* Queue View rendering */}
           {queueViewMode === 'list' ? (
-            <ResizableTableContainer
-              maxHeight="max-h-[300px]"
-              totalTableWidth={totalTableWidth}
-              onResetColumns={resetToDefault}
-              title="Active Loan Accounts Queue"
-              itemCount={filteredActiveLoans.length}
-            >
-              <table className="w-full text-left border-collapse text-xs table-fixed">
-                <colgroup>
-                  <col style={{ width: columnWidths['loanId'] }} />
-                  <col style={{ width: columnWidths['borrower'] }} />
-                  <col style={{ width: columnWidths['nic'] }} />
-                  <col style={{ width: columnWidths['disbursed'] }} />
-                  <col style={{ width: columnWidths['outstanding'] }} />
-                  <col style={{ width: columnWidths['nextDue'] }} />
-                  <col style={{ width: columnWidths['status'] }} />
-                  <col style={{ width: columnWidths['action'] }} />
-                </colgroup>
-                <thead className="sticky top-0 z-10">
-                  <tr>
-                    <ResizableTh
-                      columnId="loanId"
-                      width={columnWidths['loanId']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'loanId'}
-                    >
-                      Loan ID
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="borrower"
-                      width={columnWidths['borrower']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'borrower'}
-                    >
-                      Borrower Name
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="nic"
-                      width={columnWidths['nic']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'nic'}
-                    >
-                      NIC
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="disbursed"
-                      width={columnWidths['disbursed']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'disbursed'}
-                      align="right"
-                    >
-                      Disbursed (LKR)
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="outstanding"
-                      width={columnWidths['outstanding']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'outstanding'}
-                      align="right"
-                    >
-                      Outstanding (LKR)
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="nextDue"
-                      width={columnWidths['nextDue']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'nextDue'}
-                      align="right"
-                    >
-                      Next Installment
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="status"
-                      width={columnWidths['status']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'status'}
-                      align="center"
-                    >
-                      Status
-                    </ResizableTh>
-                    <ResizableTh
-                      columnId="action"
-                      width={columnWidths['action']}
-                      onResizeStart={startResize}
-                      onDoubleClickReset={handleDoubleClickReset}
-                      isResizingActive={resizingColId === 'action'}
-                      align="center"
-                    >
-                      Action
-                    </ResizableTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {filteredActiveLoans.map(l => {
-                    const isSelected = l.id === selectedLoanId;
-                    const nextInstallment = l.installments.find(i => i.status !== 'Paid');
-
-                    return (
-                      <tr
-                        key={l.id}
-                        onClick={() => setSelectedLoanId(l.id)}
-                        className={`cursor-pointer transition border-b border-slate-100/80 ${
-                          isSelected ? 'bg-blue-50/80 font-medium' : 'hover:bg-slate-50'
-                        }`}
+            <div className="overflow-hidden">
+              <ResizableTableContainer
+                maxHeight="max-h-72"
+                totalTableWidth={totalTableWidth}
+                onResetColumns={resetToDefault}
+                title="Active Loans Queue"
+                itemCount={filteredActiveLoans.length}
+              >
+                <table className="w-full text-left border-collapse text-xs table-fixed">
+                  <colgroup>
+                    <col style={{ width: columnWidths['loanId'] }} />
+                    <col style={{ width: columnWidths['borrower'] }} />
+                    <col style={{ width: columnWidths['nic'] }} />
+                    <col style={{ width: columnWidths['disbursed'] }} />
+                    <col style={{ width: columnWidths['outstanding'] }} />
+                    <col style={{ width: columnWidths['nextDue'] }} />
+                    <col style={{ width: columnWidths['status'] }} />
+                    <col style={{ width: columnWidths['action'] }} />
+                  </colgroup>
+                  <thead className="sticky top-0 z-10">
+                    <tr>
+                      <ResizableTh
+                        columnId="loanId"
+                        width={columnWidths['loanId']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'loanId'}
                       >
-                        <td className="p-2.5 font-mono text-[11px] font-bold text-slate-900 overflow-hidden truncate">
-                          {l.id}
-                        </td>
-                        <td className="p-2.5 font-bold text-slate-900 overflow-hidden truncate">
-                          {l.customerName}
-                        </td>
-                        <td className="p-2.5 font-mono text-slate-600 overflow-hidden truncate">
-                          {l.kyc.nationalIdNumber}
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-slate-700 overflow-hidden truncate">
-                          {formatCurrency(l.disbursedAmount)}
-                        </td>
-                        <td className="p-2.5 text-right font-extrabold text-blue-900 overflow-hidden truncate">
-                          {formatCurrency(l.outstandingBalance)}
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-emerald-800 overflow-hidden truncate">
-                          {formatCurrency(nextInstallment?.remainingAmount || l.nextDueAmount || 0)}
-                        </td>
-                        <td className="p-2.5 text-center overflow-hidden">
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium inline-block truncate ${
-                            l.status === 'Overdue' ? 'bg-amber-50 text-amber-800 font-bold' : 'bg-emerald-50 text-emerald-800'
-                          }`}>
-                            {l.status}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center overflow-hidden">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedLoanId(l.id); }}
-                            className="text-[10px] text-blue-700 hover:underline font-bold"
-                          >
-                            {isSelected ? 'Selected' : 'Collect'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </ResizableTableContainer>
+                        Loan ID
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="borrower"
+                        width={columnWidths['borrower']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'borrower'}
+                      >
+                        Borrower
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="nic"
+                        width={columnWidths['nic']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'nic'}
+                      >
+                        NIC
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="disbursed"
+                        width={columnWidths['disbursed']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'disbursed'}
+                        align="right"
+                      >
+                        Disbursed
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="outstanding"
+                        width={columnWidths['outstanding']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'outstanding'}
+                        align="right"
+                      >
+                        Balance
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="nextDue"
+                        width={columnWidths['nextDue']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'nextDue'}
+                        align="right"
+                      >
+                        Next Due
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="status"
+                        width={columnWidths['status']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'status'}
+                        align="center"
+                      >
+                        Status
+                      </ResizableTh>
+                      <ResizableTh
+                        columnId="action"
+                        width={columnWidths['action']}
+                        onResizeStart={startResize}
+                        onDoubleClickReset={handleDoubleClickReset}
+                        isResizingActive={resizingColId === 'action'}
+                        align="center"
+                      >
+                        Select
+                      </ResizableTh>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {paginatedActiveLoans.map(l => {
+                      const isSelected = l.id === selectedLoanId;
+                      const nextInstallment = l.installments.find(i => i.status !== 'Paid');
+
+                      return (
+                        <tr
+                          key={l.id}
+                          onClick={() => setSelectedLoanId(l.id)}
+                          className={`cursor-pointer transition ${
+                            isSelected ? 'bg-blue-50/70 font-semibold' : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <td className="p-2.5 font-mono text-[11px] text-slate-900 overflow-hidden truncate">
+                            {l.id}
+                          </td>
+                          <td className="p-2.5 font-medium text-slate-900 overflow-hidden truncate">
+                            {l.customerName}
+                          </td>
+                          <td className="p-2.5 font-mono text-slate-600 overflow-hidden truncate">
+                            {l.kyc.nationalIdNumber}
+                          </td>
+                          <td className="p-2.5 text-right font-semibold text-slate-700 overflow-hidden truncate">
+                            {formatCurrency(l.disbursedAmount)}
+                          </td>
+                          <td className="p-2.5 text-right font-extrabold text-blue-900 overflow-hidden truncate">
+                            {formatCurrency(l.outstandingBalance)}
+                          </td>
+                          <td className="p-2.5 text-right font-bold text-emerald-800 overflow-hidden truncate">
+                            {formatCurrency(nextInstallment?.remainingAmount || l.nextDueAmount || 0)}
+                          </td>
+                          <td className="p-2.5 text-center overflow-hidden">
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium inline-block truncate ${
+                              l.status === 'Overdue' ? 'bg-amber-50 text-amber-800 font-bold' : 'bg-emerald-50 text-emerald-800'
+                            }`}>
+                              {l.status}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-center overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedLoanId(l.id); }}
+                              className="text-[10px] text-blue-700 hover:underline font-bold cursor-pointer"
+                            >
+                              {isSelected ? 'Selected' : 'Collect'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </ResizableTableContainer>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-56 overflow-y-auto p-1">
-              {filteredActiveLoans.map(l => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-1">
+              {paginatedActiveLoans.map(l => {
                 const isSelected = l.id === selectedLoanId;
-                const nextInstallment = l.installments.find(i => i.status !== 'Paid');
 
                 return (
                   <div
@@ -421,6 +454,15 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
             </div>
           )}
 
+          {/* Active Loans Pagination */}
+          <Pagination
+            currentPage={queuePage}
+            totalItems={filteredActiveLoans.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setQueuePage}
+            itemName="active accounts"
+          />
+
         </div>
       )}
 
@@ -441,7 +483,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
             </div>
           </div>
 
-          <form onSubmit={handleSubmitPayment} className="space-y-4">
+          <form onSubmit={handleOpenConfirm} className="space-y-4">
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               
@@ -469,7 +511,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                     <button
                       type="button"
                       onClick={() => setPaymentAmount(nextUnpaidInstallment.remainingAmount)}
-                      className="text-slate-900 font-medium underline"
+                      className="text-slate-900 font-medium underline cursor-pointer"
                     >
                       Set {formatCurrency(nextUnpaidInstallment.remainingAmount)}
                     </button>
@@ -570,37 +612,16 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
               <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/60">
                 <span className="text-slate-900 font-semibold">New Balance:</span>
                 <span className="font-bold text-slate-900 text-xs">
-                  {formatCurrency(Math.max(0, currentLoan.outstandingBalance - paymentAmount))}
+                  {formatCurrency(projectedBalance)}
                 </span>
               </div>
             </div>
-
-            {/* 
-            Automated SMS Dispatch Notice - Commented out for now
-            <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-lg flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-100 text-blue-700 rounded-md">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="font-bold text-blue-950 block text-[11px]">Automated SMS Payment Alert Active</span>
-                  <span className="text-[10px] text-blue-700">
-                    Payment receipt SMS will be sent to <span className="font-mono font-bold text-blue-900">{currentLoan.customerPhone || 'Customer Mobile'}</span> via Text.lk API v3
-                  </span>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" />
-                Enabled
-              </span>
-            </div> 
-            */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-1">
               <button
                 type="submit"
-                className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-lg transition shadow-2xs text-xs"
+                className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-lg transition shadow-2xs text-xs cursor-pointer"
               >
                 <Receipt className="w-4 h-4" />
                 <span>Process Payment & Issue Receipt</span>
@@ -637,15 +658,15 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
             </div>
           </div>
 
-          {/* Payment History Log */}
+          {/* Payment History Log with Pagination */}
           <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-3">
             <h3 className="font-semibold text-slate-900 text-xs flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-slate-500" />
-              Recent Payments ({currentLoan.payments?.length || 0})
+              Recent Payments ({loanPayments.length})
             </h3>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {currentLoan.payments?.map(p => (
+            <div className="space-y-2">
+              {paginatedLoanPayments.map(p => (
                 <div
                   key={p.id}
                   className="bg-slate-50/60 p-2.5 rounded-lg border border-slate-100 text-[11px] space-y-0.5"
@@ -661,15 +682,44 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                 </div>
               ))}
 
-              {(!currentLoan.payments || currentLoan.payments.length === 0) && (
+              {loanPayments.length === 0 && (
                 <p className="text-xs text-slate-400 text-center py-4">No payments recorded yet.</p>
               )}
             </div>
+
+            {loanPayments.length > PAGE_SIZE && (
+              <Pagination
+                currentPage={paymentsPage}
+                totalItems={loanPayments.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPaymentsPage}
+                itemName="payment records"
+              />
+            )}
           </div>
 
         </div>
 
       </div>
+
+      {/* Payment Processing Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isConfirmPaymentOpen}
+        onClose={() => setIsConfirmPaymentOpen(false)}
+        onConfirm={handleExecutePayment}
+        title="Confirm Payment Collection"
+        description="Are you sure you want to post this payment to the borrower ledger? This will instantly adjust the outstanding balance and allocate funds to installments."
+        confirmLabel="Confirm & Post Payment"
+        cancelLabel="Review Again"
+        variant="info"
+        details={[
+          { label: 'Borrower', value: currentLoan.customerName },
+          { label: 'Payment Amount', value: formatCurrency(paymentAmount) },
+          { label: 'Payment Method', value: paymentMethod },
+          { label: 'Reference Number', value: referenceNumber },
+          { label: 'New Outstanding Balance', value: formatCurrency(projectedBalance) },
+        ]}
+      />
 
       {/* Receipt Modal Triggered after payment */}
       {showReceiptModal && lastPaymentRecord && (
