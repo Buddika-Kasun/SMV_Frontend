@@ -1,27 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Loan, KYCDocument } from '../types';
 import { formatCurrency } from '../utils/loanUtils';
+import { Pagination } from './common/Pagination';
+import { ConfirmModal } from './common/ConfirmModal';
 import { 
   ShieldCheck, 
-  FileText, 
   Upload, 
   CheckCircle2, 
   XCircle, 
-  AlertCircle, 
-  Building2, 
   User, 
-  Phone, 
+  DollarSign, 
+  Sparkles, 
+  LayoutGrid, 
+  LayoutList, 
+  ChevronDown, 
+  ChevronUp, 
+  Search, 
   Home, 
-  CreditCard,
-  DollarSign,
-  FileCheck2,
-  Sparkles,
-  Download,
-  LayoutGrid,
-  LayoutList,
-  ChevronDown,
-  ChevronUp,
-  Search
+  Building2 
 } from 'lucide-react';
 
 interface KYCStudioProps {
@@ -30,6 +26,12 @@ interface KYCStudioProps {
   onDisburseLoan: (loanId: string) => void;
 }
 
+const PAGE_SIZE = 10;
+
+/**
+ * KYC Verification & Disbursement Studio
+ * Includes max-10 rows pagination for the KYC queue and confirmation dialogs for disbursement and document audit.
+ */
 export const KYCStudio: React.FC<KYCStudioProps> = ({
   loans,
   onUpdateKYC,
@@ -43,8 +45,12 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
   );
 
   const [queueViewMode, setQueueViewMode] = useState<'list' | 'grid'>('list');
-  const [showQueue, setShowQueue] = useState<boolean>(true);
+  const [showQueue, setShowQueue] = useState<boolean>(false);
   const [queueSearch, setQueueSearch] = useState<string>('');
+  const [queuePage, setQueuePage] = useState<number>(1);
+
+  // Disbursement Confirmation Modal
+  const [isDisburseConfirmOpen, setIsDisburseConfirmOpen] = useState<boolean>(false);
 
   const currentLoan = loans.find(l => l.id === selectedLoanId);
 
@@ -89,6 +95,19 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
       });
     }
   }, [selectedLoanId, currentLoan]);
+
+  const filteredQueueLoans = useMemo(() => {
+    return allProcessableLoans.filter(l => 
+      l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
+      l.kyc.nationalIdNumber.includes(queueSearch)
+    );
+  }, [allProcessableLoans, queueSearch]);
+
+  const paginatedQueueLoans = useMemo(() => {
+    const start = (queuePage - 1) * PAGE_SIZE;
+    return filteredQueueLoans.slice(start, start + PAGE_SIZE);
+  }, [filteredQueueLoans, queuePage]);
 
   if (!currentLoan) {
     return (
@@ -173,13 +192,16 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     });
   };
 
-  const isLoanAlreadyActive = currentLoan.status === 'Active' || currentLoan.status === 'Overdue' || currentLoan.status === 'Settled';
+  const handleConfirmDisbursement = () => {
+    if (currentLoan) {
+      onDisburseLoan(currentLoan.id);
+      setIsDisburseConfirmOpen(false);
+    }
+  };
 
-  const filteredQueueLoans = allProcessableLoans.filter(l => 
-    l.customerName.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.id.toLowerCase().includes(queueSearch.toLowerCase()) ||
-    l.kyc.nationalIdNumber.includes(queueSearch)
-  );
+  const isLoanAlreadyActive = currentLoan.status === 'Active' || currentLoan.status === 'Overdue' || currentLoan.status === 'Settled';
+  const verifiedDocsCount = currentLoan.kyc.documents.filter(d => d.status === 'Verified').length;
+  const netDisbursedAmount = currentLoan.requestedAmount - currentLoan.processingFee;
 
   return (
     <div className="space-y-4">
@@ -202,7 +224,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button
             onClick={() => setShowQueue(!showQueue)}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-200/80 cursor-pointer"
           >
             <span>{showQueue ? 'Hide Queue' : 'Show Queue'}</span>
             {showQueue ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -241,7 +263,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
               <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/80">
                 <button
                   onClick={() => setQueueViewMode('list')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'list' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="List View"
@@ -251,7 +273,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                 </button>
                 <button
                   onClick={() => setQueueViewMode('grid')}
-                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition ${
+                  className={`p-1 rounded text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                     queueViewMode === 'grid' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
                   }`}
                   title="Grid View"
@@ -261,72 +283,89 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                 </button>
               </div>
 
-              {/* Search */}
-              <div className="relative w-48">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+              {/* Search in queue */}
+              <div className="relative w-full sm:w-48">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Filter queue..."
+                  placeholder="Search applicant..."
                   value={queueSearch}
-                  onChange={e => setQueueSearch(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-800 text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none"
+                  onChange={e => {
+                    setQueueSearch(e.target.value);
+                    setQueuePage(1);
+                  }}
+                  className="w-full bg-slate-50 text-slate-800 text-xs pl-8 pr-3 py-1 rounded-lg border border-slate-200/80 focus:bg-white focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Render Queue in List or Grid */}
+          {/* Queue View rendering */}
           {queueViewMode === 'list' ? (
-            <div className="overflow-x-auto max-h-60 overflow-y-auto rounded-lg border border-slate-200/80">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[10px]">
-                    <th className="p-2.5 font-semibold">Loan ID</th>
-                    <th className="p-2.5 font-semibold">Applicant Name</th>
-                    <th className="p-2.5 font-semibold">NIC Number</th>
-                    <th className="p-2.5 font-semibold">Loan Amount</th>
-                    <th className="p-2.5 font-semibold">Employer / Income</th>
-                    <th className="p-2.5 font-semibold text-center">Docs Verified</th>
-                    <th className="p-2.5 font-semibold text-center">Status</th>
-                    <th className="p-2.5 font-semibold text-center">Action</th>
+            <div className="overflow-x-auto border border-slate-100 rounded-lg">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200/60">
+                  <tr>
+                    <th className="p-2.5">Loan ID</th>
+                    <th className="p-2.5">Customer & NIC</th>
+                    <th className="p-2.5">Product</th>
+                    <th className="p-2.5 text-right">Requested Amount</th>
+                    <th className="p-2.5 text-center">Docs Verified</th>
+                    <th className="p-2.5 text-center">KYC Status</th>
+                    <th className="p-2.5 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredQueueLoans.map(l => {
+                  {paginatedQueueLoans.map(l => {
                     const isSelected = l.id === selectedLoanId;
-                    const verifiedDocsCount = l.kyc.documents.filter(d => d.status === 'Verified').length;
+                    const docCount = l.kyc.documents.length;
+                    const verifiedCount = l.kyc.documents.filter(d => d.status === 'Verified').length;
 
                     return (
                       <tr
                         key={l.id}
                         onClick={() => setSelectedLoanId(l.id)}
-                        className={`cursor-pointer transition ${
-                          isSelected ? 'bg-blue-50/80 font-medium' : 'hover:bg-slate-50'
+                        className={`transition cursor-pointer ${
+                          isSelected ? 'bg-blue-50/70 font-semibold' : 'hover:bg-slate-50/80'
                         }`}
                       >
-                        <td className="p-2.5 font-mono text-[11px] font-bold text-slate-900">{l.id}</td>
-                        <td className="p-2.5 font-bold text-slate-900">{l.customerName}</td>
-                        <td className="p-2.5 font-mono text-slate-600">{l.kyc.nationalIdNumber}</td>
-                        <td className="p-2.5 font-bold text-slate-900">{formatCurrency(l.requestedAmount)}</td>
-                        <td className="p-2.5 text-slate-600">{l.kyc.employerName || 'Self-Employed'}</td>
-                        <td className="p-2.5 text-center font-semibold">
-                          <span className={verifiedDocsCount === l.kyc.documents.length ? 'text-emerald-700' : 'text-amber-700'}>
-                            {verifiedDocsCount} / {l.kyc.documents.length}
+                        <td className="p-2.5 font-mono text-[11px] text-slate-900">{l.id}</td>
+                        <td className="p-2.5">
+                          <span className="font-bold text-slate-900 block">{l.customerName}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{l.kyc.nationalIdNumber}</span>
+                        </td>
+                        <td className="p-2.5 text-slate-600">{l.loanType}</td>
+                        <td className="p-2.5 text-right font-bold text-slate-900">
+                          {formatCurrency(l.requestedAmount)}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <span className="text-[11px] font-mono text-slate-600">
+                            {verifiedCount} / {docCount}
                           </span>
                         </td>
                         <td className="p-2.5 text-center">
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
-                            l.kyc.isVerified ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            l.kyc.isVerified
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
+                              : 'bg-amber-50 text-amber-800 border border-amber-200/60'
                           }`}>
-                            {l.kyc.isVerified ? 'KYC Verified' : 'KYC Pending'}
+                            {l.kyc.isVerified ? 'Verified' : 'Pending'}
                           </span>
                         </td>
                         <td className="p-2.5 text-center">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedLoanId(l.id); }}
-                            className="text-[10px] text-blue-700 hover:underline font-bold"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLoanId(l.id);
+                            }}
+                            className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
                           >
-                            {isSelected ? 'Editing' : 'Select'}
+                            Open
                           </button>
                         </td>
                       </tr>
@@ -336,16 +375,16 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
               </table>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
-              {filteredQueueLoans.map(l => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {paginatedQueueLoans.map(l => {
                 const isSelected = l.id === selectedLoanId;
-                const verifiedDocsCount = l.kyc.documents.filter(d => d.status === 'Verified').length;
+                const verifiedDocs = l.kyc.documents.filter(d => d.status === 'Verified').length;
 
                 return (
                   <div
                     key={l.id}
                     onClick={() => setSelectedLoanId(l.id)}
-                    className={`p-3 rounded-xl border cursor-pointer transition shadow-2xs flex flex-col justify-between ${
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20'
                         : 'border-slate-200/80 bg-white hover:border-slate-300'
@@ -366,13 +405,22 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
                     <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
                       <span className="font-bold text-slate-900">{formatCurrency(l.requestedAmount)}</span>
-                      <span className="text-slate-500">{verifiedDocsCount}/{l.kyc.documents.length} Docs</span>
+                      <span className="text-slate-500">{verifiedDocs}/{l.kyc.documents.length} Docs</span>
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* Queue Pagination */}
+          <Pagination
+            currentPage={queuePage}
+            totalItems={filteredQueueLoans.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setQueuePage}
+            itemName="queue records"
+          />
 
         </div>
       )}
@@ -516,7 +564,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
             <div className="pt-3 border-t border-slate-100">
               <h4 className="text-[11px] font-semibold text-blue-700 mb-2.5 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                Guarantor & Bank Disbursement Info
+                Guarantor & Bank Account Details
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -525,16 +573,6 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                     type="text"
                     name="guarantorName"
                     value={formData.guarantorName}
-                    onChange={handleInputChange}
-                    className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-medium text-slate-600 block mb-1">Guarantor Phone</label>
-                  <input
-                    type="text"
-                    name="guarantorPhone"
-                    value={formData.guarantorPhone}
                     onChange={handleInputChange}
                     className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
@@ -549,15 +587,25 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                     className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="text-[11px] font-medium text-slate-600 block mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    name="accountNumber"
+                    value={formData.accountNumber}
+                    onChange={handleInputChange}
+                    className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="pt-3 flex justify-end">
+            <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-xs transition shadow-xs"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
               >
-                Save KYC Details
+                Save KYC Information
               </button>
             </div>
 
@@ -565,18 +613,15 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
         </div>
 
-        {/* Right Column: Required Documents Checklist & Disbursement Trigger */}
-        <div className="space-y-6">
+        {/* Right Column: Documents & Disbursement */}
+        <div className="space-y-4">
           
-          {/* Documents Checklist Panel */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-900 text-xs flex items-center gap-1.5">
-                <FileCheck2 className="w-4 h-4 text-slate-500" />
-                Document Vault
-              </h3>
-              <span className="text-xs text-slate-500">
-                {currentLoan.kyc.documents.filter(d => d.status === 'Verified').length} / {currentLoan.kyc.documents.length} Verified
+          {/* Documents Card */}
+          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Required Compliance Files</h3>
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                {verifiedDocsCount} / {currentLoan.kyc.documents.length} Verified
               </span>
             </div>
 
@@ -598,7 +643,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
                   <button
                     onClick={() => handleToggleDocVerification(doc.id)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition flex items-center gap-1 shrink-0 ${
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition flex items-center gap-1 shrink-0 cursor-pointer ${
                       doc.status === 'Verified'
                         ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-amber-50 text-amber-700'
@@ -625,13 +670,14 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
               <div className="flex gap-2">
                 <label className="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-medium py-2 px-3 rounded-lg cursor-pointer transition">
                   <Upload className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Choose File</span>
+                  <span>Upload Document</span>
                   <input type="file" className="hidden" onChange={handleFileUploadMock} accept="image/*,application/pdf" />
                 </label>
 
                 <button
+                  type="button"
                   onClick={() => handleAddSampleDoc('Pay Slip / Bank Statement')}
-                  className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition"
+                  className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer"
                 >
                   + Sample
                 </button>
@@ -659,19 +705,20 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
               <div className="flex justify-between pt-1.5 border-t border-slate-200/60">
                 <span className="text-slate-900 font-semibold">Net Disbursed:</span>
                 <span className="font-bold text-slate-900 text-xs">
-                  {formatCurrency(currentLoan.requestedAmount - currentLoan.processingFee)}
+                  {formatCurrency(netDisbursedAmount)}
                 </span>
               </div>
             </div>
 
             {isLoanAlreadyActive ? (
               <div className="bg-emerald-50 text-emerald-800 p-2.5 rounded-lg text-center text-xs font-medium">
-                ✓ Loan disbursed on {currentLoan.disbursedDate || 'Record'}.
+                ✓ Loan disbursed on {currentLoan.disbursedDate || 'Record'}. Active in repayment ledger.
               </div>
             ) : (
               <button
-                onClick={() => onDisburseLoan(currentLoan.id)}
-                className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-3 rounded-lg shadow-2xs text-xs transition"
+                type="button"
+                onClick={() => setIsDisburseConfirmOpen(true)}
+                className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-3 rounded-lg shadow-2xs text-xs transition cursor-pointer"
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Grant & Disburse Loan</span>
@@ -682,6 +729,24 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
         </div>
 
       </div>
+
+      {/* Disbursement Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={isDisburseConfirmOpen}
+        onClose={() => setIsDisburseConfirmOpen(false)}
+        onConfirm={handleConfirmDisbursement}
+        title="Confirm Loan Fund Disbursement"
+        description="Are you sure you want to release and disburse funds for this loan? This action will mark the loan as Active and initialize the repayment installment schedule."
+        confirmLabel="Authorize & Disburse Funds"
+        cancelLabel="Cancel"
+        variant="success"
+        details={[
+          { label: 'Loan Reference', value: currentLoan.id },
+          { label: 'Borrower', value: currentLoan.customerName },
+          { label: 'Net Disbursed Amount', value: formatCurrency(netDisbursedAmount) },
+          { label: 'Bank & Account', value: `${formData.bankName || currentLoan.kyc.bankName} - ${formData.accountNumber || currentLoan.kyc.accountNumber}` },
+        ]}
+      />
 
     </div>
   );
