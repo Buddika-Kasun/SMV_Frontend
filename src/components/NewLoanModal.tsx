@@ -1,112 +1,220 @@
-import React, { useState } from 'react';
-import { Loan, LoanType, RepaymentFrequency, InterestMethod } from '../types';
-import { generateInstallmentSchedule, formatCurrency } from '../utils/loanUtils';
-import { X, PlusCircle, Calculator, Sparkles, User, DollarSign, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  X,
+  PlusCircle,
+  Calculator,
+  User,
+  DollarSign,
+  Loader2,
+  Lock,
+} from "lucide-react";
+import {
+  CreateLoanPayload,
+  InterestMethod,
+  LoanType,
+  RepaymentFrequency,
+} from "../api";
+import { generateInstallmentSchedule } from "../utils/loanUtils";
+import { formatCurrency } from "../utils/consultancyUtils";
+import { customerService } from "../services/customer.service";
+import { useDebounce } from "../hooks/useDebounce";
+import { useUI } from "../contexts/UIContext";
+import { loanService } from "../services/loan.service";
 
 interface NewLoanModalProps {
   onClose: () => void;
-  onCreateLoan: (newLoan: Loan) => void;
+  onRefresh: () => void;
+}
+
+const PROCCESSIN_FEE = 0.02;
+
+interface CustomerSuggestion {
+  id: string;
+  fullName: string;
+  idNumber: string;
+  phone: string;
 }
 
 export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   onClose,
-  onCreateLoan,
+  onRefresh,
 }) => {
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [nationalIdNumber, setNationalIdNumber] = useState('');
-  const [loanType, setLoanType] = useState<LoanType>('Instant Personal');
-  const [requestedAmount, setRequestedAmount] = useState<number>(500000);
-  const [interestRatePerAnnum, setInterestRatePerAnnum] = useState<number>(14.0);
-  const [termMonths, setTermMonths] = useState<number>(12);
-  const [repaymentFrequency, setRepaymentFrequency] = useState<RepaymentFrequency>('Monthly');
-  const [interestMethod, setInterestMethod] = useState<InterestMethod>('Reducing Balance');
-  const [purpose, setPurpose] = useState('');
-  const [creditScore, setCreditScore] = useState<number>(720);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [idNumber, setIdNumber] = useState("");
+  const [loanType, setLoanType] = useState<LoanType>("Instant_Personal");
 
-  // Generate instant live schedule preview
-  const previewSchedule = generateInstallmentSchedule(
-    requestedAmount,
-    interestRatePerAnnum,
-    termMonths,
-    repaymentFrequency,
-    interestMethod
+  const [requestedAmount, setRequestedAmount] = useState<string>("");
+  const [interestRatePerAnnum, setInterestRatePerAnnum] =
+    useState<string>("14.0");
+  const [termMonths, setTermMonths] = useState<string>("12");
+
+  const [repaymentFrequency, setRepaymentFrequency] =
+    useState<RepaymentFrequency>("Monthly");
+  const [interestMethod, setInterestMethod] =
+    useState<InterestMethod>("Reducing_Balance");
+  const [purpose, setPurpose] = useState("");
+
+  // -------- Lookup state --------
+  const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(
+    null,
   );
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const debouncedId = useDebounce(idNumber, 300);
 
-  const estimatedEMI = previewSchedule.length > 0 ? previewSchedule[0].totalInstallment : 0;
-  const totalInterestCost = previewSchedule.reduce((s, i) => s + i.interestAmount, 0);
+  // -------- Lookup on ID change --------
+  useEffect(() => {
+    let cancelled = false;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customerName || requestedAmount <= 0) return;
+    const run = async () => {
+      const q = debouncedId.trim();
+      if (q.length < 3) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setMatchedCustomerId(null);
+        return;
+      }
 
-    const newLoanId = `LN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      setLookupLoading(true);
+      try {
+        const results = await customerService.lookupByIdNumber(q);
+        if (cancelled) return;
 
-    const newLoan: Loan = {
-      id: newLoanId,
-      accountNumber: `ACC-${Math.floor(100000 + Math.random() * 900000)}`,
-      customerName,
-      customerPhone: customerPhone || '+1 (555) 000-1122',
-      customerEmail: customerEmail || `${customerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      loanType,
-      requestedAmount,
-      disbursedAmount: requestedAmount,
-      interestRatePerAnnum,
-      termMonths,
-      repaymentFrequency,
-      interestMethod,
-      processingFee: Math.round(requestedAmount * 0.02),
-      earlySettlementPenaltyPercent: 2.5,
-      status: 'Pending Approval',
-      requestedDate: new Date().toISOString().split('T')[0],
-      purpose: purpose || 'Personal Financial Assistance',
-      creditScore,
-      totalPaidAmount: 0,
-      outstandingBalance: requestedAmount,
-      kyc: {
-        nationalIdNumber: nationalIdNumber || `${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 90)}-${Math.floor(1000 + Math.random() * 9000)}`,
-        idType: 'NIC',
-        dateOfBirth: '1993-08-14',
-        gender: 'Male',
-        occupation: 'General Employee',
-        employerName: 'Local Enterprise',
-        monthlyIncome: 4500,
-        addressLine: 'Main Avenue',
-        city: 'Metro City',
-        postalCode: '10001',
-        guarantorName: 'Emergency Contact',
-        guarantorPhone: '+1 (555) 999-0011',
-        guarantorRelation: 'Relative',
-        bankName: 'National Bank',
-        accountNumber: '**** **** 8812',
-        isVerified: false,
-        documents: [],
-      },
-      installments: previewSchedule,
-      payments: [],
+        setSuggestions(results);
+
+        // Exact match → autofill + lock
+        const exact = results.find(
+          (r) => r.idNumber.toLowerCase() === q.toLowerCase(),
+        );
+        if (exact) {
+          setCustomerName(exact.fullName);
+          setCustomerPhone(exact.phone);
+          setMatchedCustomerId(exact.id);
+          setShowSuggestions(false);
+        } else {
+          // Partial matches → show dropdown, don't autofill yet
+          setMatchedCustomerId(null);
+          setShowSuggestions(results.length > 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!cancelled) setLookupLoading(false);
+      }
     };
 
-    onCreateLoan(newLoan);
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedId]);
+
+  // -------- Click outside to close dropdown --------
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handlePickSuggestion = (s: CustomerSuggestion) => {
+    setIdNumber(s.idNumber);
+    setCustomerName(s.fullName);
+    setCustomerPhone(s.phone);
+    setMatchedCustomerId(s.id);
+    setShowSuggestions(false);
+  };
+
+  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIdNumber(e.target.value);
+    // If the user edits the ID after an autofill, unlock the name/phone
+    if (matchedCustomerId) {
+      setMatchedCustomerId(null);
+    }
+  };
+
+  // -------- Preview calculations --------
+  const numericAmount = parseFloat(requestedAmount) || 0;
+  const numericRate = parseFloat(interestRatePerAnnum) || 0;
+  const numericTerm = parseInt(termMonths) || 1;
+
+  const previewSchedule = generateInstallmentSchedule(
+    numericAmount,
+    numericRate,
+    numericTerm,
+    repaymentFrequency,
+    interestMethod,
+  );
+
+  const estimatedEMI =
+    previewSchedule.length > 0 ? previewSchedule[0].totalInstallment : 0;
+  const totalInterestCost = previewSchedule.reduce(
+    (s, i) => s + i.interestAmount,
+    0,
+  );
+
+  const handleSubmit = async(e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName || numericAmount <= 0) return;
+
+    const newLoan: CreateLoanPayload = {
+      customerName,
+      customerPhone,
+      idNumber,
+      loanType,
+      requestedAmount: numericAmount,
+      disbursedAmount: numericAmount,
+      interestRatePerAnnum: numericRate,
+      termMonths: numericTerm,
+      repaymentFrequency,
+      interestMethod,
+      processingFee: Math.round(numericAmount * PROCCESSIN_FEE),
+      earlySettlementPenaltyPercent: 2.5,
+      purpose: purpose || "Personal Financial Assistance",
+    };
+
+    await loanService.createLoan(newLoan);
+
+    onRefresh();
     onClose();
   };
+
+  const isAutofilled = Boolean(matchedCustomerId);
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white border border-slate-200/80 rounded-2xl max-w-3xl w-full overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-150">
-        
         <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 text-blue-600">
             <PlusCircle className="w-4 h-4" />
-            <h3 className="font-bold text-slate-900 text-sm">New Loan Application Request</h3>
+            <h3 className="font-bold text-slate-900 text-sm">
+              New Loan Application Request
+            </h3>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition">
+          <button
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs text-slate-700">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="p-5 space-y-4 text-xs text-slate-700"
+        >
           {/* Customer Personal Details */}
           <div>
             <h4 className="font-semibold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 text-[10px]">
@@ -114,44 +222,101 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               1. Customer Profile
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* ID Number with lookup */}
+              <div ref={wrapperRef} className="relative">
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  NIC / Passport Number
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={idNumber}
+                    onChange={handleIdChange}
+                    onFocus={() =>
+                      suggestions.length > 0 && setShowSuggestions(true)
+                    }
+                    placeholder="e.g. 981-22-1092"
+                    autoComplete="off"
+                    className="w-full bg-white text-slate-800 py-1.5 px-2.5 pr-8 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs font-mono"
+                    required
+                  />
+                  {lookupLoading && (
+                    <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-500 animate-spin" />
+                  )}
+                  {!lookupLoading && isAutofilled && (
+                    <Lock className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-emerald-600" />
+                  )}
+                </div>
+
+                {/* Suggestions dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 border-b border-slate-100 sticky top-0">
+                      Existing customers ({suggestions.length})
+                    </div>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handlePickSuggestion(s)}
+                        className="w-full text-left px-2.5 py-2 hover:bg-blue-50 transition border-b border-slate-50 last:border-0 cursor-pointer"
+                      >
+                        <div className="font-semibold text-slate-900 text-xs truncate">
+                          {s.fullName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2">
+                          <span>{s.idNumber}</span>
+                          {s.phone && (
+                            <span className="text-slate-400">• {s.phone}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Customer Full Name</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Customer Full Name
+                </label>
                 <input
                   type="text"
                   value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
+                  onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+                  disabled={isAutofilled}
+                  className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Phone Number</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Phone Number
+                </label>
                 <input
                   type="text"
                   value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value)}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">NIC / Passport Number</label>
-                <input
-                  type="text"
-                  value={nationalIdNumber}
-                  onChange={e => setNationalIdNumber(e.target.value)}
-                  placeholder="e.g. 981-22-1092"
-                  className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs font-mono"
+                  disabled={isAutofilled}
+                  className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
                   required
                 />
               </div>
             </div>
+
+            {isAutofilled && (
+              <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-1 mt-2 inline-flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                Existing customer matched — name and phone auto-filled and
+                locked.
+              </p>
+            )}
           </div>
 
-          {/* Loan Contract Configuration */}
+          {/* Loan Contract Configuration (unchanged) */}
           <div>
             <h4 className="font-semibold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 text-[10px]">
               <DollarSign className="w-3.5 h-3.5 text-blue-600" />
@@ -159,59 +324,76 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Loan Category</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Loan Category
+                </label>
                 <select
                   value={loanType}
-                  onChange={e => setLoanType(e.target.value as LoanType)}
+                  onChange={(e) => setLoanType(e.target.value as LoanType)}
                   className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                 >
-                  <option value="Instant Personal">Instant Personal Loan</option>
-                  <option value="Emergency Quick">Emergency Quick Loan</option>
-                  <option value="Standard Personal">Standard Personal Loan</option>
-                  <option value="Business Expansion">Business Expansion</option>
-                  <option value="Micro Enterprise">Micro Enterprise</option>
+                  <option value="Instant_Personal">
+                    Instant Personal Loan
+                  </option>
+                  <option value="Emergency_Quick">Emergency Quick Loan</option>
+                  <option value="Standard_Personal">
+                    Standard Personal Loan
+                  </option>
+                  <option value="Business_Expansion">Business Expansion</option>
+                  <option value="Micro_Enterprise">Micro Enterprise</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Requested Amount (LKR)</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Requested Amount (LKR)
+                </label>
                 <input
                   type="number"
                   value={requestedAmount}
-                  onChange={e => setRequestedAmount(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setRequestedAmount(e.target.value)}
+                  placeholder="0"
                   className="w-full bg-white text-slate-900 font-bold py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Interest Rate (% P.A.)</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Interest Rate (% P.A.)
+                </label>
                 <input
                   type="number"
                   step="0.1"
                   value={interestRatePerAnnum}
-                  onChange={e => setInterestRatePerAnnum(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setInterestRatePerAnnum(e.target.value)}
                   className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Term Duration (Months)</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Term Duration (Months)
+                </label>
                 <input
                   type="number"
                   value={termMonths}
-                  onChange={e => setTermMonths(parseInt(e.target.value) || 1)}
+                  onChange={(e) => setTermMonths(e.target.value)}
                   className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Repayment Frequency</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Repayment Frequency
+                </label>
                 <select
                   value={repaymentFrequency}
-                  onChange={e => setRepaymentFrequency(e.target.value as RepaymentFrequency)}
+                  onChange={(e) =>
+                    setRepaymentFrequency(e.target.value as RepaymentFrequency)
+                  }
                   className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                 >
                   <option value="Monthly">Monthly</option>
@@ -221,45 +403,40 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               </div>
 
               <div>
-                <label className="text-slate-600 font-medium block mb-1 text-[10px]">Interest Calculation Method</label>
+                <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+                  Interest Calculation Method
+                </label>
                 <select
                   value={interestMethod}
-                  onChange={e => setInterestMethod(e.target.value as InterestMethod)}
+                  onChange={(e) =>
+                    setInterestMethod(e.target.value as InterestMethod)
+                  }
                   className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                 >
-                  <option value="Reducing Balance">Reducing Balance (Standard)</option>
-                  <option value="Flat Rate">Flat Rate Interest</option>
+                  <option value="Reducing_Balance">
+                    Reducing Balance (Standard)
+                  </option>
+                  <option value="Flat_Rate">Flat Rate Interest</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Purpose & Credit Score */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div>
-              <label className="text-slate-600 font-medium block mb-1 text-[10px]">Loan Purpose</label>
-              <input
-                type="text"
-                value={purpose}
-                onChange={e => setPurpose(e.target.value)}
-                placeholder="e.g. Home Renovation, Equipment"
-                className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
-              />
-            </div>
-            <div>
-              <label className="text-slate-600 font-medium block mb-1 text-[10px]">Applicant Credit Score</label>
-              <input
-                type="number"
-                min="300"
-                max="850"
-                value={creditScore}
-                onChange={e => setCreditScore(parseInt(e.target.value) || 600)}
-                className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs font-mono"
-              />
-            </div>
+          {/* Purpose */}
+          <div>
+            <label className="text-slate-600 font-medium block mb-1 text-[10px]">
+              Loan Purpose
+            </label>
+            <input
+              type="text"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder="e.g. Home Renovation, Equipment"
+              className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+            />
           </div>
 
-          {/* Instant Calculation Preview */}
+          {/* Preview */}
           <div className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100/80 space-y-2">
             <div className="flex items-center gap-1.5 text-blue-700 font-semibold text-xs">
               <Calculator className="w-3.5 h-3.5 text-blue-600" />
@@ -267,16 +444,28 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
             </div>
             <div className="grid grid-cols-3 gap-2 text-slate-700">
               <div>
-                <span className="text-slate-500 block text-[10px]">Estimated EMI:</span>
-                <span className="font-extrabold text-blue-900 text-xs">{formatCurrency(estimatedEMI)}</span>
+                <span className="text-slate-500 block text-[10px]">
+                  Estimated EMI:
+                </span>
+                <span className="font-extrabold text-blue-900 text-xs">
+                  {formatCurrency(estimatedEMI)}
+                </span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px]">Total Scheduled Interest:</span>
-                <span className="font-bold text-amber-700 text-xs">{formatCurrency(totalInterestCost)}</span>
+                <span className="text-slate-500 block text-[10px]">
+                  Total Scheduled Interest:
+                </span>
+                <span className="font-bold text-amber-700 text-xs">
+                  {formatCurrency(totalInterestCost)}
+                </span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px]">Total Repayment Value:</span>
-                <span className="font-bold text-emerald-800 text-xs">{formatCurrency(requestedAmount + totalInterestCost)}</span>
+                <span className="text-slate-500 block text-[10px]">
+                  Total Repayment Value:
+                </span>
+                <span className="font-bold text-emerald-800 text-xs">
+                  {formatCurrency(numericAmount + totalInterestCost)}
+                </span>
               </div>
             </div>
           </div>
@@ -285,20 +474,18 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition"
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-xs text-xs transition"
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-xs text-xs transition cursor-pointer"
             >
               Submit Loan Application
             </button>
           </div>
-
         </form>
-
       </div>
     </div>
   );
