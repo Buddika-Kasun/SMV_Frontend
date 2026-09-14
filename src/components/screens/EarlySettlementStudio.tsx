@@ -751,7 +751,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
         /* SETTLED STATE — full-width proper message, no left column */
         <div className="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
           {/* Header strip */}
-          <div className="bg-gradient-to-r from-emerald-50 to-emerald-50/40 border-b border-emerald-100 px-6 py-4">
+          <div className="bg-linear-to-r from-emerald-50 to-emerald-50/40 border-b border-emerald-100 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
                 <Award className="w-5 h-5" />
