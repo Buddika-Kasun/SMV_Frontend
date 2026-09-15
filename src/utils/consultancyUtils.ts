@@ -1,4 +1,8 @@
-import { ConsultancyAgreement } from '../types';
+// import { ConsultancyAgreement } from '../types';
+
+import { ConsultancyAgreement } from "../api";
+
+// import { ConsultancyAgreement } from "../api";
 
 /**
  * Calculates maturity date by adding specified months (default 6) to a start YYYY-MM-DD date string.
@@ -32,17 +36,17 @@ export function getDaysRemaining(maturityDateStr: string): number {
  */
 export function recalculateConsultancyStatus(agreement: ConsultancyAgreement): ConsultancyAgreement {
   if (agreement.returnRecord) {
-    return { ...agreement, status: 'Returned & Closed' };
+    return { ...agreement, status: 'Returned_Closed' };
   }
 
   const daysLeft = getDaysRemaining(agreement.maturityDate);
 
   if (daysLeft <= 0) {
-    return { ...agreement, status: 'Maturity Reached' };
+    return { ...agreement, status: 'Maturity_Reached' };
   } else if (daysLeft <= 30) {
-    return { ...agreement, status: 'Maturing Soon' };
+    return { ...agreement, status: 'Maturing_Soon' };
   } else {
-    return { ...agreement, status: 'Active Placed' };
+    return { ...agreement, status: 'Active_Placed' };
   }
 }
 
@@ -51,7 +55,7 @@ export function recalculateConsultancyStatus(agreement: ConsultancyAgreement): C
  */
 export function formatCurrency(amount: number): string {
   const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount || 0);
   return `LKR ${formatted}`;

@@ -1,5 +1,8 @@
-import { ConsultancyAgreement } from '../types';
-import { recalculateConsultancyStatus } from '../utils/consultancyUtils';
+// import { ConsultancyAgreement } from '../types';
+// import { recalculateConsultancyStatus } from '../utils/consultancyUtils';
+
+import { ConsultancyAgreement } from "../api";
+import { recalculateConsultancyStatus } from "../utils/consultancyUtils";
 
 const rawConsultancies: ConsultancyAgreement[] = [
   {
@@ -13,20 +16,20 @@ const rawConsultancies: ConsultancyAgreement[] = [
     accountNumber: '**** **** 9081',
     lastStatementBalance: 425000,
     lastStatementDate: '2026-03-28',
-    passbookDocument: {
-      id: 'DOC-CS-101',
-      fileName: 'passbook_robert_vance_statement.pdf',
-      fileType: 'application/pdf',
-      fileSize: '1.8 MB',
-      fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80',
-      uploadedAt: '2026-04-01 10:15',
-    },
+    // passbookDocument: {
+    //   id: 'DOC-CS-101',
+    //   fileName: 'passbook_robert_vance_statement.pdf',
+    //   fileType: 'application/pdf',
+    //   fileSize: '1.8 MB',
+    //   fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80',
+    //   uploadedAt: '2026-04-01 10:15',
+    // },
     placedAmount: 1500000,
     startDate: '2026-04-01',
     maturityDate: '2026-10-01',
     termMonths: 6,
     monthlyConsultancyFee: 15000,
-    status: 'Active Placed',
+    status: 'Active_Placed',
     notes: '6-Month capital deposit agreement. Bank passbook verified by finance officer.',
     createdDate: '2026-04-01',
   },
@@ -41,20 +44,20 @@ const rawConsultancies: ConsultancyAgreement[] = [
     accountNumber: '**** **** 3312',
     lastStatementBalance: 180000,
     lastStatementDate: '2026-02-10',
-    passbookDocument: {
-      id: 'DOC-CS-102',
-      fileName: 'hnb_passbook_statement_anita.png',
-      fileType: 'image/png',
-      fileSize: '2.4 MB',
-      fileUrl: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=500&q=80',
-      uploadedAt: '2026-02-15 14:20',
-    },
+    // passbookDocument: {
+    //   id: 'DOC-CS-102',
+    //   fileName: 'hnb_passbook_statement_anita.png',
+    //   fileType: 'image/png',
+    //   fileSize: '2.4 MB',
+    //   fileUrl: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=500&q=80',
+    //   uploadedAt: '2026-02-15 14:20',
+    // },
     placedAmount: 2500000,
     startDate: '2026-02-15',
     maturityDate: '2026-08-15',
     termMonths: 6,
     monthlyConsultancyFee: 25000,
-    status: 'Maturing Soon',
+    status: 'Maturing_Soon',
     notes: 'Client account funded for 6 months. Due for fund return in mid August.',
     createdDate: '2026-02-15',
   },
@@ -69,27 +72,27 @@ const rawConsultancies: ConsultancyAgreement[] = [
     accountNumber: '**** **** 5541',
     lastStatementBalance: 610000,
     lastStatementDate: '2026-01-05',
-    passbookDocument: {
-      id: 'DOC-CS-103',
-      fileName: 'sampath_bank_passbook_gregory.pdf',
-      fileType: 'application/pdf',
-      fileSize: '1.2 MB',
-      fileUrl: 'https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=500&q=80',
-      uploadedAt: '2026-01-10 09:30',
-    },
+    // passbookDocument: {
+    //   id: 'DOC-CS-103',
+    //   fileName: 'sampath_bank_passbook_gregory.pdf',
+    //   fileType: 'application/pdf',
+    //   fileSize: '1.2 MB',
+    //   fileUrl: 'https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=500&q=80',
+    //   uploadedAt: '2026-01-10 09:30',
+    // },
     placedAmount: 1000000,
     startDate: '2026-01-10',
     maturityDate: '2026-07-10',
     termMonths: 6,
     monthlyConsultancyFee: 10000,
-    status: 'Returned & Closed',
+    status: 'Returned_Closed',
     notes: '6-Month term successfully completed. Full funds returned back to business.',
     createdDate: '2026-01-10',
     returnRecord: {
       id: 'RET-8003',
       returnDate: '2026-07-10',
       returnedAmount: 1000000,
-      paymentMethod: 'Bank Transfer',
+      paymentMethod: 'Bank_Transfer',
       referenceNumber: 'TRF-RET-99182',
       processedBy: 'Officer James Sterling',
       notes: 'Full LKR 1,000,000 returned to company master account upon 6-month maturity.',
