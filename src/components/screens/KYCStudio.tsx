@@ -99,9 +99,7 @@ const SkeletonField: React.FC<{ className?: string }> = ({
   />
 );
 
-const SkeletonText: React.FC<{ className?: string }> = ({
-  className = "",
-}) => (
+const SkeletonText: React.FC<{ className?: string }> = ({ className = "" }) => (
   <div className={`h-3.5 bg-slate-100 rounded animate-pulse ${className}`} />
 );
 
@@ -684,10 +682,6 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                 ))}
               </div>
             )
-          ) : queueLoans.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">
-              No loans found for this status.
-            </p>
           ) : queueViewMode === "list" ? (
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
               <table className="w-full text-left text-xs border-collapse">
@@ -703,151 +697,172 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {queueLoans.map((l) => {
-                    const isSelected = l.id === selectedLoanId;
-                    const verifiedCount =
-                      l.kyc?.documents?.filter((d) => d.status === "Verified")
-                        .length || 0;
-                    const total = l.kyc?.documents?.length || 0;
-
-                    return (
-                      <tr
-                        key={l.id}
-                        onClick={() => handleSelectLoan(l.id)}
-                        className={`transition cursor-pointer ${
-                          isSelected
-                            ? "bg-blue-50/70 font-semibold"
-                            : "hover:bg-slate-50/80"
-                        }`}
+                  {queueLoans.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="py-4 text-center text-xs text-slate-400"
                       >
-                        <td className="p-2.5 font-mono text-[11px] text-slate-900">
-                          {l.loanNumber}
-                        </td>
-                        <td className="p-2.5">
-                          <span className="font-bold text-slate-900 block">
-                            {l.customer?.fullName}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {l.customer?.idNumber}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-slate-600">
-                          {getLoanTypeLabel(l.loanType)}
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-slate-900">
-                          {formatCurrency(l.requestedAmount)}
-                        </td>
-                        <td className="p-2.5 text-center font-mono text-[11px]">
-                          {verifiedCount} / {total}
-                        </td>
-                        <td className="p-2.5 text-center font-mono text-[11px]">
-                          <span
-                            className={`${getLoanStatusColor(l.status)} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
-                          >
-                            {getLoanStatusLabel(l.status)}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectLoan(l.id);
-                            }}
-                            className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                              isSelected
-                                ? "bg-blue-600 text-white"
-                                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            }`}
-                          >
-                            {isSelected ? "Opened" : "Open"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        No loans found for this status.
+                      </td>
+                    </tr>
+                  ) : (
+                    queueLoans.map((l) => {
+                      const isSelected = l.id === selectedLoanId;
+                      const verifiedCount =
+                        l.kyc?.documents?.filter((d) => d.status === "Verified")
+                          .length || 0;
+                      const total = l.kyc?.documents?.length || 0;
+
+                      return (
+                        <tr
+                          key={l.id}
+                          onClick={() => handleSelectLoan(l.id)}
+                          className={`transition cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-50/70 font-semibold"
+                              : "hover:bg-slate-50/80"
+                          }`}
+                        >
+                          <td className="p-2.5 font-mono text-[11px] text-slate-900">
+                            {l.loanNumber}
+                          </td>
+                          <td className="p-2.5">
+                            <span className="font-bold text-slate-900 block">
+                              {l.customer?.fullName}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {l.customer?.idNumber}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-slate-600">
+                            {getLoanTypeLabel(l.loanType)}
+                          </td>
+                          <td className="p-2.5 text-right font-bold text-slate-900">
+                            {formatCurrency(l.requestedAmount)}
+                          </td>
+                          <td className="p-2.5 text-center font-mono text-[11px]">
+                            {verifiedCount} / {total}
+                          </td>
+                          <td className="p-2.5 text-center font-mono text-[11px]">
+                            <span
+                              className={`${getLoanStatusColor(l.status)} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
+                            >
+                              {getLoanStatusLabel(l.status)}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectLoan(l.id);
+                              }}
+                              className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              }`}
+                            >
+                              {isSelected ? "Opened" : "Open"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {queueLoans.map((l) => {
-                const isSelected = l.id === selectedLoanId;
-                const verifiedDocs =
-                  l.kyc?.documents?.filter((d) => d.status === "Verified")
-                    .length || 0;
-                const totalDocsCard = l.kyc?.documents?.length || 0;
+              {queueLoans.length === 0 ? (
+                <div className="text-xs text-slate-400 text-center py-4 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                  No loans found for this status.
+                </div>
+              ) : (
+                queueLoans.map((l) => {
+                  const isSelected = l.id === selectedLoanId;
+                  const verifiedDocs =
+                    l.kyc?.documents?.filter((d) => d.status === "Verified")
+                      .length || 0;
+                  const totalDocsCard = l.kyc?.documents?.length || 0;
 
-                return (
-                  <div
-                    key={l.id}
-                    onClick={() => handleSelectLoan(l.id)}
-                    className={`p-3 rounded-lg border text-left transition cursor-pointer ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20"
-                        : "border-slate-200/80 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-mono font-bold text-slate-900">
-                        {l.loanNumber}
-                      </span>
-                      <span
-                        className={`${getLoanStatusColor(l.status)} text-[8px] px-1.5 py-0.2 rounded-full font-medium`}
-                      >
-                        {getLoanStatusLabel(l.status)}
-                      </span>
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => handleSelectLoan(l.id)}
+                      className={`p-3 rounded-lg border text-left transition cursor-pointer ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20"
+                          : "border-slate-200/80 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono font-bold text-slate-900">
+                          {l.loanNumber}
+                        </span>
+                        <span
+                          className={`${getLoanStatusColor(l.status)} text-[8px] px-1.5 py-0.2 rounded-full font-medium`}
+                        >
+                          {getLoanStatusLabel(l.status)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-xs text-slate-900 truncate">
+                          {l.customer?.fullName}
+                        </h4>
+                        <span
+                          className={`text-[8px] px-1.5 py-0.2 rounded-full font-medium ${
+                            l.customer?.isVerified
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                              : "bg-amber-50 text-amber-700 border border-amber-200/60"
+                          }`}
+                        >
+                          {l.customer?.isVerified
+                            ? "Verified"
+                            : "Verification Pending"}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        NIC: {l.customer?.idNumber}
+                      </p>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-slate-900">
+                          {formatCurrency(l.requestedAmount)}
+                        </span>
+                        <span className="text-slate-500">
+                          {verifiedDocs}/{totalDocsCard} Docs
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-bold text-xs text-slate-900 truncate">
-                        {l.customer?.fullName}
-                      </h4>
-                      <span
-                        className={`text-[8px] px-1.5 py-0.2 rounded-full font-medium ${
-                          l.customer?.isVerified
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
-                            : "bg-amber-50 text-amber-700 border border-amber-200/60"
-                        }`}
-                      >
-                        {l.customer?.isVerified
-                          ? "Verified"
-                          : "Verification Pending"}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 font-mono">
-                      NIC: {l.customer?.idNumber}
-                    </p>
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-900">
-                        {formatCurrency(l.requestedAmount)}
-                      </span>
-                      <span className="text-slate-500">
-                        {verifiedDocs}/{totalDocsCard} Docs
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           )}
 
-          <Pagination
-            currentPage={queuePage}
-            totalItems={queueTotal}
-            pageSize={pageSize}
-            onPageChange={setQueuePage}
-            itemName="queue records"
-          />
+          {queueLoans.length > 0 && (
+            <Pagination
+              currentPage={queuePage}
+              totalItems={queueTotal}
+              pageSize={pageSize}
+              onPageChange={setQueuePage}
+              itemName="queue records"
+            />
+          )}
         </div>
       )}
 
       {/* LOAN DETAIL + FORM */}
       {!currentLoan && !loanLoading ? (
         <div className="flex-1 flex items-center justify-center bg-white border border-slate-200/80 p-8 rounded-xl text-center text-slate-500 shadow-2xs">
-          <ShieldCheck className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-          <p className="font-bold text-slate-800 text-sm">No Loan Selected</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Select a loan from the queue above to start KYC verification.
-          </p>
+          <div>
+            <ShieldCheck className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+            <p className="font-bold text-slate-800 text-sm">No Loan Selected</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Select a loan from the queue above to start KYC verification.
+            </p>
+          </div>
         </div>
       ) : (
         <>
@@ -1498,4 +1513,4 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
       )}
     </div>
   );
-};;
+};

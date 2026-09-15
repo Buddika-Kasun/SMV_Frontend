@@ -359,11 +359,11 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   // Derived
   // ---------------------------------------------------------
   const [settlementDate, setSettlementDate] = useState<string>(
-      new Date().toISOString().split("T")[0],
-    );
+    new Date().toISOString().split("T")[0],
+  );
   const quote: EarlySettlementQuote | null = currentLoan
-      ? calculateEarlySettlementQuote(currentLoan, settlementDate)
-      : null;
+    ? calculateEarlySettlementQuote(currentLoan, settlementDate)
+    : null;
 
   const currentUnpaidInstallment = currentLoan?.installments.find(
     (i) => i.status !== "Paid",
@@ -389,7 +389,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   // Render
   // ---------------------------------------------------------
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col h-full min-h-0">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
         <div>
@@ -553,10 +553,6 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                 ))}
               </div>
             )
-          ) : queueLoans.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">
-              No loans found for this status.
-            </p>
           ) : queueViewMode === "list" ? (
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
               <table className="w-full text-left text-xs border-collapse">
@@ -572,142 +568,163 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {queueLoans.map((l) => {
-                    const isSelected = l.id === selectedLoanId;
-                    const nextInstallment = l.installments.find(
-                      (i) => i.status !== "Paid",
-                    );
-
-                    return (
-                      <tr
-                        key={l.id}
-                        onClick={() => handleSelectLoan(l.id)}
-                        className={`cursor-pointer transition ${
-                          isSelected
-                            ? "bg-blue-50/70 font-semibold"
-                            : "hover:bg-slate-50/80"
-                        }`}
+                  {queueLoans.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="py-4 text-center text-xs text-slate-400"
                       >
-                        <td className="p-2.5 font-mono text-[11px] text-slate-900">
-                          {l.loanNumber || l.id}
-                        </td>
-                        <td className="p-2.5">
-                          <span className="font-bold text-slate-900 block">
-                            {l.customer?.fullName}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {l.customer?.idNumber}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-slate-700">
-                          {formatCurrency(l.account?.disbursedAmount || 0)}
-                        </td>
-                        <td className="p-2.5 text-right font-extrabold text-blue-900">
-                          {formatCurrency(l.outstandingBalance)}
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-emerald-800 flex flex-col">
-                          <span>
-                            {formatCurrency(
-                              nextInstallment?.remainingAmount ||
-                                l.nextDueAmount ||
-                                0,
-                            )}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {toDateInput(nextInstallment?.dueDate)}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <span
-                            className={`${getLoanStatusColor(l.status)} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
-                          >
-                            {getLoanStatusLabel(l.status)}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectLoan(l.id);
-                            }}
-                            className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                              isSelected
-                                ? "bg-blue-600 text-white"
-                                : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            }`}
-                          >
-                            {isSelected ? "Opened" : "Open"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        No loans found for this status.
+                      </td>
+                    </tr>
+                  ) : (
+                    queueLoans.map((l) => {
+                      const isSelected = l.id === selectedLoanId;
+                      const nextInstallment = l.installments.find(
+                        (i) => i.status !== "Paid",
+                      );
+
+                      return (
+                        <tr
+                          key={l.id}
+                          onClick={() => handleSelectLoan(l.id)}
+                          className={`cursor-pointer transition ${
+                            isSelected
+                              ? "bg-blue-50/70 font-semibold"
+                              : "hover:bg-slate-50/80"
+                          }`}
+                        >
+                          <td className="p-2.5 font-mono text-[11px] text-slate-900">
+                            {l.loanNumber || l.id}
+                          </td>
+                          <td className="p-2.5">
+                            <span className="font-bold text-slate-900 block">
+                              {l.customer?.fullName}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {l.customer?.idNumber}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-right font-semibold text-slate-700">
+                            {formatCurrency(l.account?.disbursedAmount || 0)}
+                          </td>
+                          <td className="p-2.5 text-right font-extrabold text-blue-900">
+                            {formatCurrency(l.outstandingBalance)}
+                          </td>
+                          <td className="p-2.5 text-right font-bold text-emerald-800 flex flex-col">
+                            <span>
+                              {formatCurrency(
+                                nextInstallment?.remainingAmount ||
+                                  l.nextDueAmount ||
+                                  0,
+                              )}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {toDateInput(nextInstallment?.dueDate)}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <span
+                              className={`${getLoanStatusColor(l.status)} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
+                            >
+                              {getLoanStatusLabel(l.status)}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectLoan(l.id);
+                              }}
+                              className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              }`}
+                            >
+                              {isSelected ? "Opened" : "Open"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {queueLoans.map((l) => {
-                const isSelected = l.id === selectedLoanId;
+              {queueLoans.length === 0 ? (
+                <div className="text-xs text-slate-400 text-center py-4 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                  No loans found for this status.
+                </div>
+              ) : (
+                queueLoans.map((l) => {
+                  const isSelected = l.id === selectedLoanId;
 
-                return (
-                  <div
-                    key={l.id}
-                    onClick={() => handleSelectLoan(l.id)}
-                    className={`p-3 rounded-lg border text-left transition cursor-pointer ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20"
-                        : "border-slate-200/80 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-mono font-bold text-slate-900">
-                        {l.loanNumber || l.id}
-                      </span>
-                      <span
-                        className={`${getLoanStatusColor(l.status)} text-[8px] px-1.5 py-0.2 rounded-full font-medium`}
-                      >
-                        {getLoanStatusLabel(l.status)}
-                      </span>
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => handleSelectLoan(l.id)}
+                      className={`p-3 rounded-lg border text-left transition cursor-pointer ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20"
+                          : "border-slate-200/80 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono font-bold text-slate-900">
+                          {l.loanNumber || l.id}
+                        </span>
+                        <span
+                          className={`${getLoanStatusColor(l.status)} text-[8px] px-1.5 py-0.2 rounded-full font-medium`}
+                        >
+                          {getLoanStatusLabel(l.status)}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900 truncate mb-1">
+                        {l.customer?.fullName}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        ID: {l.customer?.idNumber}
+                      </p>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500">Balance:</span>
+                        <span className="font-bold text-blue-900">
+                          {formatCurrency(l.outstandingBalance)}
+                        </span>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-xs text-slate-900 truncate mb-1">
-                      {l.customer?.fullName}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 font-mono">
-                      ID: {l.customer?.idNumber}
-                    </p>
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-500">Balance:</span>
-                      <span className="font-bold text-blue-900">
-                        {formatCurrency(l.outstandingBalance)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           )}
 
-          <Pagination
-            currentPage={queuePage}
-            totalItems={queueTotal}
-            pageSize={pageSize}
-            onPageChange={setQueuePage}
-            itemName="active accounts"
-          />
+          {queueLoans.length > 0 && (
+            <Pagination
+              currentPage={queuePage}
+              totalItems={queueTotal}
+              pageSize={pageSize}
+              onPageChange={setQueuePage}
+              itemName="active accounts"
+            />
+          )}
         </div>
       )}
 
       {/* LOAN DETAIL + PAYMENT FORM */}
       {!currentLoan && !loanLoading ? (
-        <div className="bg-white border border-slate-200/80 p-8 rounded-xl text-center text-slate-500 shadow-2xs">
-          <CreditCard className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-          <p className="font-bold text-slate-800 text-sm">
-            No Active Loan Selected
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Select a loan from the queue above to record a payment.
-          </p>
+        <div className="flex-1 flex items-center justify-center bg-white border border-slate-200/80 p-8 rounded-xl text-center text-slate-500 shadow-2xs">
+          <div>
+            <CreditCard className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+            <p className="font-bold text-slate-800 text-sm">
+              No Active Loan Selected
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Select a loan from the queue above to record a payment.
+            </p>
+          </div>
         </div>
       ) : loanLoading ? (
         /* Loading state — both columns skeleton */
