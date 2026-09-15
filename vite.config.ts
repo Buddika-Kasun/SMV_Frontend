@@ -31,10 +31,18 @@ export default defineConfig(({ mode }) => {
   // so we can also read PORT from the platform)
   const env = loadEnv(mode, process.cwd(), "");
 
+  console.log("[vite] RAW env.VITE_ALLOWED_HOSTS =", env.VITE_ALLOWED_HOSTS);
+  console.log(
+    "[vite] process.env.VITE_ALLOWED_HOSTS =",
+    process.env.VITE_ALLOWED_HOSTS,
+  );
+
   const allowedHosts = (env.VITE_ALLOWED_HOSTS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+  console.log("[vite] parsed allowedHosts =", JSON.stringify(allowedHosts));
 
   return {
     plugins: [react(), tailwindcss()],
