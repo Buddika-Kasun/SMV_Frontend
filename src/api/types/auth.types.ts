@@ -1,4 +1,4 @@
-import { User } from "@/src/types";
+import { User } from "./user.types";
 
 export interface LoginPayload {
   username: string;
