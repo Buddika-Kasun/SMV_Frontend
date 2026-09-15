@@ -20,9 +20,6 @@ export default defineConfig(({ mode }) => {
 
   const port = Number(process.env.PORT) || Number(fileEnv.PORT) || 3000;
 
-  console.log("[vite] allowedHosts =", JSON.stringify(allowedHosts));
-  console.log("[vite] preview port =", port);
-
   return {
     plugins: [react(), tailwindcss()],
     resolve: {

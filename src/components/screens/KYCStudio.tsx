@@ -519,7 +519,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
   // Render
   // ---------------------------------------------------------
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col h-full min-h-0">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
         <div>
@@ -842,7 +842,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
 
       {/* LOAN DETAIL + FORM */}
       {!currentLoan && !loanLoading ? (
-        <div className="bg-white border border-slate-200/80 p-8 rounded-xl text-center text-slate-500 shadow-2xs">
+        <div className="flex-1 flex items-center justify-center bg-white border border-slate-200/80 p-8 rounded-xl text-center text-slate-500 shadow-2xs">
           <ShieldCheck className="w-10 h-10 text-slate-400 mx-auto mb-2" />
           <p className="font-bold text-slate-800 text-sm">No Loan Selected</p>
           <p className="text-xs text-slate-500 mt-0.5">
