@@ -78,7 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const from = params.get("from");
 
     if (from === "login_success" && !toastShown.current) {
-      const userStr = localStorage.getItem("smv_holdings_current_session_v3");
+      const userStr = localStorage.getItem("smv_user");
       if (userStr) {
         try {
           const user = JSON.parse(userStr);

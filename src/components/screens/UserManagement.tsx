@@ -27,7 +27,7 @@ import { ConfirmModal } from "../common/ConfirmModal";
 import toast from "react-hot-toast";
 import { useDebounce } from "../../hooks/useDebounce";
 import { User, UserRole } from "../../api";
-import { toDateInput } from "../../utils/loanUtils";
+import { toDateInput, toDateTimeDisplay } from "../../utils/loanUtils";
 
 interface UserManagementProps {
   currentUser: User;
@@ -677,7 +677,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       {/* Last Login / Created */}
                       <td className="px-4 py-3 text-[11px] text-slate-500">
                         <span className="block font-medium text-slate-700">
-                          {user.lastLogin || "Never logged in"}
+                          {toDateTimeDisplay(user.lastLogin) || "Never logged in"}
                         </span>
                         <span className="text-[10px] text-slate-400">
                           Created: {toDateInput(user.createdAt)}
