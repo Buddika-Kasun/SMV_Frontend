@@ -136,6 +136,29 @@ export interface AccountData {
   updatedAt: string;
 }
 
+export type DocumentType =
+  | "National_ID_Passport"
+  | "Proof_of_Address"
+  | "Pay_Slip_Bank_Statement"
+  | "Guarantor_ID"
+  | "Business_Registration";
+
+export type DocumentStatus = "Pending_Review" | "Verified" | "Rejected";
+
+export interface LoanDocument {
+  id: string;
+  loanId: string;
+  documentType: DocumentType;
+  fileName: string;
+  fileKey: string;
+  fileUrl: string;
+  status: DocumentStatus;
+  uploadedAt: string;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  notes: string | null;
+}
+
 export interface Loan {
   id: string;
   loanNumber: string;
@@ -161,6 +184,7 @@ export interface Loan {
   approvedDate?: string;
   disbursedDate?: string;
   kyc?: KYCData;
+  documents?: LoanDocument[];
   installments: Installment[];
   payments: PaymentRecord[];
   earlySettlementQuote?: EarlySettlementQuote;

@@ -154,6 +154,6 @@ export const loanEndpoint = {
       fileName: string;
     },
   ): Promise<ApiResponse<Loan>> => {
-    return apiClient.post<Loan>(`/loans/${loanId}/documents`, input);
+    return apiClient.put<Loan>(`/loans/${loanId}/documents/attach`, input);
   },
 };

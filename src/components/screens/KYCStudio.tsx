@@ -20,6 +20,7 @@ import {
   X,
   FileText,
   Lock,
+  Eye,
 } from "lucide-react";
 import { KYCPayload, Loan } from "../../api";
 import { formatCurrency } from "../../utils/consultancyUtils";
@@ -502,9 +503,9 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
     currentLoan?.status === "Settled";
 
   const verifiedDocsCount =
-    currentLoan?.kyc?.documents?.filter((d) => d.status === "Verified")
+    currentLoan?.documents?.filter((d) => d.status === "Verified")
       .length || 0;
-  const totalDocs = currentLoan?.kyc?.documents?.length || 0;
+  const totalDocs = currentLoan?.documents?.length || 0;
   const netDisbursedAmount = currentLoan
     ? Number(currentLoan.requestedAmount) - (Number(formData.deductedFee) || 0)
     : 0;
@@ -1198,7 +1199,8 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                   <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                     {loanLoading
                       ? "— / —"
-                      : `${verifiedDocsCount} / ${totalDocs}`}{" "}
+                      : // : `${verifiedDocsCount} / ${totalDocs}`}{" "}
+                        `${totalDocs}`}{" "}
                     Verified
                   </span>
                 </div>
@@ -1217,22 +1219,22 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                         <div className="h-5 w-16 bg-slate-200 rounded-full shrink-0" />
                       </div>
                     ))
-                  ) : currentLoan?.kyc?.documents &&
-                    currentLoan.kyc.documents.length > 0 ? (
-                    currentLoan.kyc.documents.map((doc) => (
+                  ) : currentLoan?.documents &&
+                    currentLoan.documents.length > 0 ? (
+                    currentLoan.documents.map((doc) => (
                       <div
                         key={doc.id}
                         className="bg-slate-50/60 p-3 rounded-lg border border-slate-200/60 flex items-center justify-between gap-2"
                       >
                         <div className="min-w-0">
                           <span className="text-[10px] text-slate-400 font-medium block">
-                            {doc.type}
+                            {doc.documentType}
                           </span>
                           <span className="text-xs font-medium text-slate-800 truncate block">
                             {doc.fileName}
                           </span>
                         </div>
-                        <span
+                        {/* <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-medium flex items-center gap-1 shrink-0 ${
                             doc.status === "Verified"
                               ? "bg-emerald-50 text-emerald-700"
@@ -1250,7 +1252,14 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                               Pending
                             </>
                           )}
-                        </span>
+                        </span> */}
+                        <button
+                          // onClick={() => onOpenLoanDetails(loan.id)}
+                          className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))
                   ) : (
