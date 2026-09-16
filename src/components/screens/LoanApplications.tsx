@@ -348,66 +348,84 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       </div>
 
       {/* Empty / Loading / Data State */}
-      {loans.length === 0 && !loading ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-slate-200/80 text-slate-500 shadow-2xs flex-1">
-          <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-          <p className="font-semibold text-slate-700 text-xs">
-            No matching loan applications found.
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Try selecting a different status filter or clear your search term.
-          </p>
-        </div>
-      ) : viewMode === "list" ? (
-        /* LIST VIEW */
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
-          {/* Table Header Label */}
-          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Loan Applications & Approvals
-            </h3>
-            <span className="text-[10px] text-slate-400">
-              {totalItems} record{totalItems !== 1 ? "s" : ""}
-            </span>
-          </div>
+      {
+        // loans.length === 0 && !loading ? (
+        //   <div className="text-center py-12 bg-white rounded-xl border border-slate-200/80 text-slate-500 shadow-2xs flex-1">
+        //     <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+        //     <p className="font-semibold text-slate-700 text-xs">
+        //       No matching loan applications found.
+        //     </p>
+        //     <p className="text-[11px] text-slate-400 mt-0.5">
+        //       Try selecting a different status filter or clear your search term.
+        //     </p>
+        //   </div>
+        // ) :
+        viewMode === "list" ? (
+          /* LIST VIEW */
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
+            {/* Table Header Label */}
+            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Loan Applications & Approvals
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                {totalItems} record{totalItems !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-          {/* Table */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
-                <tr className="border-b border-slate-200/80">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Loan ID & Acc ID
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Applicant
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Loan Product
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Principal (LKR)
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Outstanding (LKR)
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Term / Rate
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loading
-                  ? Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
+                  <tr className="border-b border-slate-200/80">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Loan ID & Acc ID
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Applicant
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Loan Product
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Principal (LKR)
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Outstanding (LKR)
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      Term / Rate
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {loading ? (
+                    Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
                       <SkeletonRow key={`sk-${i}`} />
                     ))
-                  : loans.map((loan) => {
+                  ) : loans.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <FileText className="w-8 h-8 text-slate-300" />
+                          <p className="font-semibold text-slate-700 text-xs">
+                            No matching loan applications found.
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            Try selecting a different status filter or clear
+                            your search term.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    loans.map((loan) => {
                       const cfg = getLoanStatusConfig(loan.status);
                       const isPendingApproval =
                         loan.status === "Pending_Approval";
@@ -556,28 +574,45 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                           </td>
                         </tr>
                       );
-                    })}
-              </tbody>
-            </table>
-          </div>
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            itemName="applications"
-          />
-        </div>
-      ) : (
-        /* GRID VIEW (9 per page) */
-        <div className="space-y-4 flex flex-col flex-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-            {loading
-              ? Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
+            {loans.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemName="applications"
+              />
+            )}
+          </div>
+        ) : (
+          /* GRID VIEW (9 per page) */
+          <div className="space-y-4 flex flex-col flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+              {loading ? (
+                Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
                   <SkeletonCard key={`sk-${i}`} />
                 ))
-              : loans.map((loan) => {
+              ) : loans.length === 0 ? (
+                <div className="py-8 text-center md:col-span-2 lg:col-span-3">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <FileText className="w-8 h-8 text-slate-300" />
+                    <p className="font-semibold text-slate-700 text-xs">
+                      No matching loan applications found.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Try selecting a different status filter or clear your
+                      search term.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                loans.map((loan) => {
                   const cfg = getLoanStatusConfig(loan.status);
                   const isPendingApproval = loan.status === "Pending_Approval";
                   const isKycPending = loan.status === "KYC_Pending";
@@ -735,20 +770,24 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                       </div>
                     </div>
                   );
-                })}
-          </div>
+                })
+              )}
+            </div>
 
-          <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              itemName="applications"
-            />
+              {loans.length > 0 && 
+            <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemName="applications"
+              />
+            </div>
+              }
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Approve Confirmation */}
       <ConfirmModal
