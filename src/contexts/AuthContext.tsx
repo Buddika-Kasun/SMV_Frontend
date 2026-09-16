@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Direct localStorage check - most reliable
         const token = localStorage.getItem("access_token");
-        const userStr = localStorage.getItem("smv_holdings_current_session_v3");
+        const userStr = localStorage.getItem("smv_user");
 
         if (token && userStr) {
           const user = JSON.parse(userStr);

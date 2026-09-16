@@ -105,13 +105,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // ---------------------------------------------------------
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    const session = localStorage.getItem("smv_holdings_current_session_v3");
+    const session = localStorage.getItem("smv_user");
     return Boolean(session);
   });
 
   // Re-evaluate auth on every route change (login → dashboard transition)
   useEffect(() => {
-    const session = localStorage.getItem("smv_holdings_current_session_v3");
+    const session = localStorage.getItem("smv_user");
     setIsAuthenticated(Boolean(session));
   }, [location.pathname]);
 

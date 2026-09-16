@@ -586,6 +586,29 @@ export function toDateInput(v?: string | null): string {
   return v ? new Date(v).toISOString().slice(0, 10) : "";
 }
 
+// Helper: ISO -> "YYYY-MM-DD hh:mm AM/PM"
+export function toDateTimeDisplay(v?: string | null): string {
+  if (!v) return "";
+
+  const date = new Date(v);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const meridiem = hours >= 12 ? "PM" : "AM";
+
+  hours = hours % 12;
+  if (hours === 0) hours = 12; // 0 → 12 (midnight / noon)
+
+  const hh = String(hours).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hh}:${minutes} ${meridiem}`;
+}
+
 // ============================================================
 // Repayment Frequency Helper
 // ============================================================
