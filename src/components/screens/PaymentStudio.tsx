@@ -23,6 +23,7 @@ import {
   Award,
   Printer,
   X,
+  Eye,
 } from "lucide-react";
 import { EarlySettlementQuote, Loan, PaymentRecord } from "../../api";
 import { loanService } from "../../services/loan.service";
@@ -40,6 +41,7 @@ import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
 
 interface PaymentStudioProps {
   initialLoanId?: string | null;
+  onOpenLoanDetails: (loanId: string) => void,
 }
 
 const PAYMENT_QUEUE_COLUMNS: ColumnConfig[] = [
@@ -143,6 +145,7 @@ const PaymentFormSkeleton: React.FC = () => (
  */
 export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   initialLoanId,
+  onOpenLoanDetails,
 }) => {
   const { currentUser } = useAuth();
 
@@ -915,11 +918,22 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                     <h3 className="text-sm font-semibold text-slate-900">
                       {currentLoan?.loanNumber || currentLoan?.id}
                     </h3>
-                    <span
-                      className={`${getLoanStatusColor(currentLoan?.status || "")} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
-                    >
-                      {getLoanStatusLabel(currentLoan?.status || "")}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`${getLoanStatusColor(currentLoan?.status || "")} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
+                      >
+                        {getLoanStatusLabel(currentLoan?.status || "")}
+                      </span>
+                      {currentLoan?.id && (
+                        <button
+                          onClick={() => onOpenLoanDetails(currentLoan.id)}
+                          className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                     Customer

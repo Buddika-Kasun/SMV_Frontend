@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Search,
   Loader2,
+  Eye,
 } from "lucide-react";
 import { EarlySettlementQuote, Loan, PaymentRecord } from "../../api";
 import { loanService } from "../../services/loan.service";
@@ -39,6 +40,7 @@ import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
 
 interface EarlySettlementStudioProps {
   initialLoanId?: string | null;
+  onOpenLoanDetails: (loanId: string) => void;
 }
 
 const EARLY_SETTLEMENT_COLUMNS: ColumnConfig[] = [
@@ -169,6 +171,7 @@ const AuthFormSkeleton: React.FC = () => (
  */
 export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   initialLoanId,
+  onOpenLoanDetails,
 }) => {
   const { currentUser } = useAuth();
 
@@ -888,7 +891,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             {/* Left Column: Calculation Breakdown */}
             <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-5">
               {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-0 border-b border-slate-100">
                 <div className="w-full">
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                     Settlement Quote
@@ -898,11 +901,22 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                       {currentLoan?.customer?.fullName} (
                       {currentLoan?.loanNumber || currentLoan?.id})
                     </h3>
-                    <span
-                      className={`${getLoanStatusColor(currentLoan?.status || "")} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
-                    >
-                      {getLoanStatusLabel(currentLoan?.status || "")}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`${getLoanStatusColor(currentLoan?.status || "")} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
+                      >
+                        {getLoanStatusLabel(currentLoan?.status || "")}
+                      </span>
+                      {currentLoan?.id && (
+                        <button
+                          onClick={() => onOpenLoanDetails(currentLoan.id)}
+                          className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

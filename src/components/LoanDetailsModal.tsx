@@ -3,6 +3,8 @@ import { formatCurrency } from "../utils/consultancyUtils";
 import { X, FileText, Loader2 } from "lucide-react";
 import { Loan } from "../api";
 import {
+  getInstallmentStatusColor,
+  getInstallmentStatusLabel,
   getInterestMethodLabel,
   getLoanStatusColor,
   getLoanStatusConfig,
@@ -284,17 +286,9 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       </td>
                       <td className="py-2 px-2.5 font-sans">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            inst.status === "Paid"
-                              ? "bg-green-100 text-green-700"
-                              : inst.status === "Overdue"
-                                ? "bg-amber-100 text-amber-700"
-                                : inst.status === "Partially_Paid"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-slate-100 text-slate-500"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${getInstallmentStatusColor(inst.status)}`}
                         >
-                          {inst.status}
+                          {getInstallmentStatusLabel(inst.status)}
                         </span>
                       </td>
                     </tr>

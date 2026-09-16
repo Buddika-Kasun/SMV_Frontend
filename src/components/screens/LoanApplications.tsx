@@ -480,14 +480,6 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => onOpenLoanDetails(loan.id)}
-                                className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
-                                title="View Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-
                               {isPendingApproval &&
                                 (canApprove ? (
                                   <>
@@ -553,6 +545,13 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                                   </button>
                                 </>
                               )}
+                              <button
+                                onClick={() => onOpenLoanDetails(loan.id)}
+                                className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                                title="View Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </td>
                         </tr>

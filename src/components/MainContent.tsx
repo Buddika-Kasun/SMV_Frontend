@@ -65,10 +65,20 @@ export const MainContent: React.FC<MainContentProps> = ({
       return <KYCStudio initialLoanId={selectedLoanId} />;
 
     case "payments":
-      return <PaymentStudio initialLoanId={selectedLoanId} />;
+      return (
+        <PaymentStudio
+          initialLoanId={selectedLoanId}
+          onOpenLoanDetails={openLoanDetails}
+        />
+      );
 
     case "settlement":
-      return <EarlySettlementStudio initialLoanId={selectedLoanId} />;
+      return (
+        <EarlySettlementStudio
+          initialLoanId={selectedLoanId}
+          onOpenLoanDetails={openLoanDetails}
+        />
+      );
 
     case "customers":
       return (
