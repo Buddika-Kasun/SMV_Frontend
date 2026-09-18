@@ -10,6 +10,7 @@ import {
   KYCData,
   KYCPayload,
   PaymentRecord,
+  LoanStateCounts,
 } from "../types";
 
 export const loanEndpoint = {
@@ -108,6 +109,13 @@ export const loanEndpoint = {
    */
   delete: (id: string): Promise<ApiResponse<null>> => {
     return apiClient.delete<null>(`/loans/${id}`);
+  },
+
+  /**
+   * Get loan status counts
+   */
+  getStateCounts: (): Promise<ApiResponse<LoanStateCounts>> => {
+    return apiClient.get<LoanStateCounts>("/loans/state-counts");
   },
 
   /**

@@ -10,6 +10,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { TabType } from "../types";
 import { NavigationCounts } from "../api/types/dashboard.types";
 import { dashboardService } from "../services/dashboard.service";
+import { LoanDocument } from "../api";
 
 interface UIContextType {
   activeTab: TabType;
@@ -31,6 +32,10 @@ interface UIContextType {
   openPaymentForLoan: (loanId: string) => void;
   openSettlementForLoan: (loanId: string) => void;
   clearPreselectedLoan: () => void;
+
+  previewDocument: LoanDocument | null;
+  openDocumentPreview: (doc: LoanDocument) => void;
+  closeDocumentPreview: () => void;
 
   // ---------------------------------------------------------
   // Refresh signal
@@ -92,6 +97,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
+    console.log("refresh key : ", refreshKey);
   }, []);
 
   const triggerRefreshChannel = useCallback((channel: string) => {
@@ -203,6 +209,18 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setPreselectedPaymentLoanId(null);
   }, []);
 
+  const [previewDocument, setPreviewDocument] = useState<LoanDocument | null>(
+    null,
+  );
+
+  const openDocumentPreview = useCallback((doc: LoanDocument) => {
+    setPreviewDocument(doc);
+  }, []);
+
+  const closeDocumentPreview = useCallback(() => {
+    setPreviewDocument(null);
+  }, []);
+
   const value: UIContextType = {
     activeTab,
     setActiveTab,
@@ -233,6 +251,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Navigation counts
     navCounts,
     navCountsLoading,
+
+    previewDocument,
+    openDocumentPreview,
+    closeDocumentPreview,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

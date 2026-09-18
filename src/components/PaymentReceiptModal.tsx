@@ -12,6 +12,8 @@ import {
 import { Loan, PaymentRecord } from "../api";
 import { getPaymentMethodLabel } from "../utils/loanUtils";
 
+import logoIcon from "@/src/assets/logo2.jpg";
+
 interface PaymentReceiptModalProps {
   loan: Loan;
   payment: PaymentRecord;
@@ -211,7 +213,12 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
             {/* Company Branding */}
             <div className="text-center pb-3 border-b border-slate-100 space-y-0.5">
               <div className="flex items-center justify-center gap-1.5 text-slate-900 font-bold text-sm">
-                <Building2 className="w-4 h-4 text-blue-600" />
+                {/* <Building2 className="w-4 h-4 text-blue-600" /> */}
+                <img
+                  src={logoIcon}
+                  alt="SMV Holdings"
+                  className="w-8 h-8 object-contain rounded-full"
+                />
                 <span>SMV HOLDINGS (PVT) LTD</span>
               </div>
               <p className="text-[10px] text-slate-500">

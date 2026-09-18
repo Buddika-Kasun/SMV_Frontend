@@ -14,6 +14,8 @@ import {
 import { TabType } from "../types";
 import { User } from "../api";
 
+import logoIcon from "@/src/assets/logo2.jpg";
+
 interface NavigationProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
@@ -133,10 +135,15 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <aside className="w-full md:w-56 bg-white text-slate-800 flex flex-col shrink-0 border-r border-slate-200/80">
       {/* Brand Header */}
-      <div className="p-4 border-b border-slate-100 flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-xs">
-          <Building2 className="w-4.5 h-4.5 text-white" />
-        </div>
+      <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2.5">
+        {/* <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-xs"> */}
+          {/* <Building2 className="w-4.5 h-4.5 text-white" /> */}
+          <img
+            src={logoIcon}
+            alt="SMV Holdings"
+            className="w-10 h-10 object-contain rounded-full"
+          />
+        {/* </div> */}
         <div>
           <span className="font-extrabold text-slate-900 tracking-tight text-sm block">
             SMV Holdings

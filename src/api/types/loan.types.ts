@@ -17,6 +17,18 @@ export type LoanStatus =
   | "Early_Settled"
   | "Rejected";
 
+export interface LoanStateCounts {
+  total: number;
+  Pending_Approval: number;
+  KYC_Pending: number;
+  Approved_Pending_Disbursement: number;
+  Active: number;
+  Overdue: number;
+  Settled: number;
+  Early_Settled: number;
+  Rejected: number;
+}
+
 export type InstallmentStatus =
   | "Paid"
   | "Pending"
@@ -152,6 +164,7 @@ export interface LoanDocument {
   fileName: string;
   fileKey: string;
   fileUrl: string;
+  previewUrl: string;
   status: DocumentStatus;
   uploadedAt: string;
   verifiedAt: string | null;

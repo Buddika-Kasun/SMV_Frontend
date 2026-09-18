@@ -210,7 +210,8 @@ export function calculateEarlySettlementQuote(
   principalPaidToDate = Math.round(principalPaidToDate * 100) / 100;
   const outstandingPrincipalBalance = Math.max(
     0,
-    Math.round((loan.account?.disbursedAmount! - principalPaidToDate) * 100) / 100,
+    Math.round((loan.account?.disbursedAmount! - principalPaidToDate) * 100) /
+      100,
   );
 
   // Calculate accrued interest for current period
@@ -623,4 +624,15 @@ export function getRepaymentFrequencyLabel(frequency: string): string {
     Weekly: "Weekly",
   };
   return map[frequency] || frequency;
+}
+
+export function getDocumentTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    National_ID_Passport: "National ID / Passport",
+    Proof_of_Address: "Proof of Address",
+    Pay_Slip_Bank_Statement: "Pay Slip / Bank Statement",
+    Guarantor_ID: "Guarantor ID",
+    Business_Registration: "Business Registration",
+  };
+  return map[type] || type.replace(/_/g, " ");
 }

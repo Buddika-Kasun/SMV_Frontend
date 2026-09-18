@@ -22,9 +22,10 @@ import {
   Lock,
   Eye,
 } from "lucide-react";
-import { KYCPayload, Loan } from "../../api";
+import { KYCPayload, Loan, LoanDocument } from "../../api";
 import { formatCurrency } from "../../utils/consultancyUtils";
 import {
+  getDocumentTypeLabel,
   getLoanStatusColor,
   getLoanStatusLabel,
   getLoanTypeLabel,
@@ -33,6 +34,7 @@ import {
 import { loanService } from "../../services/loan.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
+import { DocumentPreviewModal } from "../DocumentPreviewModal";
 
 // ---------------------------------------------------------
 // Skeleton Row (Queue List View)
@@ -117,6 +119,10 @@ const FieldSlot: React.FC<{
 
 interface KYCStudioProps {
   initialLoanId?: string | null;
+  onRefresh: () => void;
+  refresh: number;
+  onOpenLoanDetails: (loanId: string) => void;
+  openDocumentPreview: (doc: LoanDocument) => void;
 }
 
 const LIST_PAGE_SIZE = 10;
@@ -146,7 +152,13 @@ const DOCUMENT_TYPES = [
   "Business_Registration",
 ];
 
-export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
+export const KYCStudio: React.FC<KYCStudioProps> = ({
+  initialLoanId,
+  onRefresh,
+  refresh,
+  onOpenLoanDetails,
+  openDocumentPreview,
+}) => {
   console.log("Initial loan id: ", initialLoanId);
   // ---------------------------------------------------------
   // Queue data for TABLE/GRID (via listLoans with params)
@@ -242,7 +254,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -265,7 +277,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
     } finally {
       setDropdownLoading(false);
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -326,7 +338,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
     if (selectedLoanId) {
       fetchCurrentLoan(selectedLoanId);
     }
-  }, [selectedLoanId, fetchCurrentLoan]);
+  }, [selectedLoanId, fetchCurrentLoan, refresh]);
 
   // ---------------------------------------------------------
   // Form handlers
@@ -372,9 +384,12 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
       };
 
       await loanService.updateKYC(currentLoan.id, kycPayload);
-      await fetchCurrentLoan(currentLoan.id);
-      await fetchQueueLoans();
-      await fetchDropdownLoans();
+
+      onRefresh();
+
+      // await fetchCurrentLoan(currentLoan.id);
+      // await fetchQueueLoans();
+      // await fetchDropdownLoans();
     } catch (error) {
       // Error already toasted in service
     } finally {
@@ -453,9 +468,12 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
       setIsDocUploadOpen(false);
       setDocFile(null);
       setDocFileName("");
-      await fetchCurrentLoan(currentLoan.id);
-      await fetchQueueLoans();
-      await fetchDropdownLoans();
+
+      onRefresh();
+
+      // await fetchCurrentLoan(currentLoan.id);
+      // await fetchQueueLoans();
+      // await fetchDropdownLoans();
     } catch (error: any) {
       console.error("Upload failed:", error);
       toast.error(error.message || "Failed to upload document");
@@ -476,9 +494,12 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
         Number(formData.deductedFee),
       );
       setIsDisburseConfirmOpen(false);
-      await fetchCurrentLoan(currentLoan.id);
-      await fetchQueueLoans();
-      await fetchDropdownLoans();
+
+      onRefresh();
+
+      // await fetchCurrentLoan(currentLoan.id);
+      // await fetchQueueLoans();
+      // await fetchDropdownLoans();
     } catch (error) {
       // Error already toasted in service
     } finally {
@@ -503,8 +524,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
     currentLoan?.status === "Settled";
 
   const verifiedDocsCount =
-    currentLoan?.documents?.filter((d) => d.status === "Verified")
-      .length || 0;
+    currentLoan?.documents?.filter((d) => d.status === "Verified").length || 0;
   const totalDocs = currentLoan?.documents?.length || 0;
   const netDisbursedAmount = currentLoan
     ? Number(currentLoan.requestedAmount) - (Number(formData.deductedFee) || 0)
@@ -887,13 +907,22 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                     {loanLoading ? (
                       <div className="h-5 w-24 bg-slate-100 rounded-full animate-pulse" />
                     ) : (
-                      <span
-                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium ${getLoanStatusColor(
-                          currentLoan?.status || "",
-                        )}`}
-                      >
-                        {getLoanStatusLabel(currentLoan?.status || "")}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`${getLoanStatusColor(currentLoan?.status || "")} text-[10px] px-2.5 py-0.5 rounded-full font-medium`}
+                        >
+                          {getLoanStatusLabel(currentLoan?.status || "")}
+                        </span>
+                        {currentLoan?.id && (
+                          <button
+                            onClick={() => onOpenLoanDetails(currentLoan.id)}
+                            className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                            title="View Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
@@ -1228,7 +1257,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                       >
                         <div className="min-w-0">
                           <span className="text-[10px] text-slate-400 font-medium block">
-                            {doc.documentType}
+                            {getDocumentTypeLabel(doc.documentType)}
                           </span>
                           <span className="text-xs font-medium text-slate-800 truncate block">
                             {doc.fileName}
@@ -1254,7 +1283,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({ initialLoanId }) => {
                           )}
                         </span> */}
                         <button
-                          // onClick={() => onOpenLoanDetails(loan.id)}
+                          onClick={() => openDocumentPreview(doc)}
                           className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
                           title="View Details"
                         >

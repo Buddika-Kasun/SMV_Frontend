@@ -18,7 +18,7 @@ import {
   LayoutList,
   Lock,
 } from "lucide-react";
-import { Loan, User } from "../../api";
+import { Loan, LoanStateCounts, User } from "../../api";
 import { TabType } from "../../types";
 import { formatCurrency } from "../../utils/consultancyUtils";
 import { loanService } from "../../services/loan.service";
@@ -176,6 +176,12 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   const [loanToReject, setLoanToReject] = useState<Loan | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Status counts for the filter chips
+  const [statusCounts, setStatusCounts] = useState<LoanStateCounts | null>(
+    null,
+  );
+  const [countsLoading, setCountsLoading] = useState(false);
+
   const canApprove =
     currentUser.role === "admin" || currentUser.role === "manager";
   const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
@@ -188,6 +194,22 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   //   resizingColId,
   //   totalTableWidth,
   // } = useResizableColumns(LOAN_COLUMNS, "loan_applications");
+
+  const fetchStatusCounts = useCallback(async () => {
+    setCountsLoading(true);
+    try {
+      const counts = await loanService.getStateCounts();
+      setStatusCounts(counts);
+    } catch (error) {
+      console.error("Failed to fetch status counts:", error);
+    } finally {
+      setCountsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatusCounts();
+  }, [fetchStatusCounts, refresh]);
 
   // Fetch loans from API
   const fetchLoans = useCallback(async () => {
@@ -288,7 +310,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
               title="List View (10 per page)"
             >
               <LayoutList className="w-4 h-4" />
-              <span className="hidden md:inline text-xs">List View</span>
+              {/* <span className="hidden md:inline text-xs">List View</span> */}
             </button>
             <button
               onClick={() => handleViewModeChange("grid")}
@@ -300,7 +322,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
               title="Grid View (9 per page)"
             >
               <LayoutGrid className="w-4 h-4" />
-              <span className="hidden md:inline text-xs">Grid View</span>
+              {/* <span className="hidden md:inline text-xs">Grid View</span> */}
             </button>
           </div>
 
@@ -316,20 +338,38 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+        <div className="flex items-center gap-1.5 py-0.5 flex-wrap">
           {STATUS_OPTIONS.map((st) => {
             const cfg = st === "All" ? null : getLoanStatusConfig(st);
+
+            // Pick the right count for this status
+            const count =
+              st === "All"
+                ? (statusCounts?.total ?? 0)
+                : (statusCounts?.[st as keyof LoanStateCounts] ?? 0);
+
             return (
               <button
                 key={st}
                 onClick={() => handleStatusFilterChange(st)}
-                className={`px-2 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition cursor-pointer ${
+                className={`px-2 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition cursor-pointer inline-flex items-center gap-1.5 ${
                   filterStatus === st
                     ? "bg-blue-600 text-white shadow-xs"
                     : "bg-white text-slate-600 hover:bg-blue-50/80 hover:text-blue-700 border border-slate-200/80"
                 }`}
               >
-                {cfg?.label || st}
+                <span>{cfg?.label || st}</span>
+                {countsLoading ? (
+                  <span
+                    className={`inline-block h-2.5 w-6 rounded animate-pulse ${
+                      filterStatus === st ? "bg-white/40" : "bg-slate-200"
+                    }`}
+                  />
+                ) : (
+                  <span className="opacity-80">
+                    ({count > 99 ? "99+" : count})
+                  </span>
+                )}
               </button>
             );
           })}
@@ -774,17 +814,17 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
               )}
             </div>
 
-              {loans.length > 0 && 
-            <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalItems}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                itemName="applications"
-              />
-            </div>
-              }
+            {loans.length > 0 && (
+              <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemName="applications"
+                />
+              </div>
+            )}
           </div>
         )
       }
@@ -867,4 +907,4 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       />
     </div>
   );
-};
+};;
