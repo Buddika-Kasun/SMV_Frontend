@@ -86,9 +86,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           setShowWelcome(true);
           toastShown.current = true;
 
-          toast.success(`👋 Welcome back, ${user.fullName}!`, {
+          toast.success(`Welcome back, ${user.fullName}!`, {
             duration: 3000,
-            icon: "🎉",
+            icon: "👋",
           });
 
           setTimeout(() => {
@@ -235,7 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <button
-            onClick={() => onTabChange("applications")}
+            onClick={() => onTabChange("payments")}
             className="bg-amber-600 text-white font-medium px-3 py-1.5 rounded-lg text-xs hover:bg-amber-700 transition shrink-0 shadow-2xs cursor-pointer"
           >
             Review Overdue

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { formatCurrency } from "../utils/consultancyUtils";
-import { X, FileText, Loader2 } from "lucide-react";
-import { Loan } from "../api";
+import { X, FileText, Loader2, Eye } from "lucide-react";
+import { Loan, LoanDocument } from "../api";
 import {
+  getDocumentTypeLabel,
   getInstallmentStatusColor,
   getInstallmentStatusLabel,
   getInterestMethodLabel,
@@ -19,6 +20,7 @@ interface LoanDetailsModalProps {
   onClose: () => void;
   onOpenPaymentModal: (loanId: string) => void;
   onOpenSettlement: (loanId: string) => void;
+  openDocumentPreview: (doc: LoanDocument) => void;
 }
 
 export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
@@ -26,6 +28,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   onClose,
   onOpenPaymentModal,
   onOpenSettlement,
+  openDocumentPreview,
 }) => {
   const [loan, setLoan] = useState<Loan | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -132,8 +135,9 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                Contract ID: {loan.loanNumber} • Account: {loan.account?.accountNumber} •
-                ID No: {loan.customer?.idNumber || "N/A"}
+                Contract ID: {loan.loanNumber} • Account:{" "}
+                {loan.account?.accountNumber} • ID No:{" "}
+                {loan.customer?.idNumber || "N/A"}
               </p>
             </div>
           </div>
@@ -408,7 +412,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       Guarantor Name:
                     </span>
                     <span>
-                      {loan.guarantor?.fullName || "N/A"} 
+                      {loan.guarantor?.fullName || "N/A"}
                       {/* ({loan.guarantor?.relation || "N/A"}) */}
                     </span>
                   </div>
@@ -441,27 +445,33 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                   Verified Documents
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {loan.kyc?.documents?.map((d) => (
+                  {loan.documents?.map((d) => (
                     <div
                       key={d.id}
                       className="bg-slate-50 p-2.5 rounded border border-slate-200 flex items-center justify-between"
                     >
                       <div>
                         <span className="font-bold text-slate-800 block text-xs">
-                          {d.type}
+                          {getDocumentTypeLabel(d.documentType)}
                         </span>
                         <span className="text-[10px] text-slate-500">
                           {d.fileName}
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">
+                      {/* <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">
                         {d.status}
-                      </span>
+                      </span> */}
+                      <button
+                        onClick={() => openDocumentPreview(d)}
+                        className="p-1.5 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 rounded-lg transition shrink-0 cursor-pointer"
+                        title="View Details"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
 
-                  {(!loan.kyc?.documents ||
-                    loan.kyc.documents.length === 0) && (
+                  {(!loan.documents || loan.documents.length === 0) && (
                     <p className="text-xs text-slate-400 py-4 col-span-2 text-center">
                       No documents uploaded.
                     </p>

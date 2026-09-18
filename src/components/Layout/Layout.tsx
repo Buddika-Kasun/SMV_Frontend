@@ -24,7 +24,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // const { activeConsultancyCount } = useConsultancies();
 
-  const { navCounts, setActiveTab } = useUI();
+  const { navCounts, setActiveTab, refreshKey } = useUI();
 
   // If no current user, don't render
   if (!currentUser) {
@@ -60,10 +60,11 @@ export const Layout: React.FC<LayoutProps> = ({
           onSelectLoan={openLoanDetails}
           currentUser={currentUser}
           onLogout={logout}
+          refresh={refreshKey}
         />
 
         <main className="overflow-y-auto flex flex-col flex-1">
-          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full max-w-7xl mx-auto">
+          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full">
             {children}
           </div>
 

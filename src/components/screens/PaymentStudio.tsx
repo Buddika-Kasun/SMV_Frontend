@@ -41,7 +41,9 @@ import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
 
 interface PaymentStudioProps {
   initialLoanId?: string | null;
-  onOpenLoanDetails: (loanId: string) => void,
+  onOpenLoanDetails: (loanId: string) => void;
+  onRefresh: () => void;
+  refresh: number;
 }
 
 const PAYMENT_QUEUE_COLUMNS: ColumnConfig[] = [
@@ -146,6 +148,8 @@ const PaymentFormSkeleton: React.FC = () => (
 export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
+  onRefresh,
+  refresh,
 }) => {
   const { currentUser } = useAuth();
 
@@ -232,7 +236,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -255,7 +259,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -305,7 +309,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     if (selectedLoanId) {
       fetchCurrentLoan(selectedLoanId);
     }
-  }, [selectedLoanId, fetchCurrentLoan]);
+  }, [selectedLoanId, fetchCurrentLoan, refresh]);
 
   // ---------------------------------------------------------
   // Handlers
@@ -346,9 +350,12 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
 
       if (payment) {
         setLastPaymentRecord(payment);
-        await fetchCurrentLoan(currentLoan.id);
-        await fetchQueueLoans();
-        await fetchDropdownLoans();
+
+        onRefresh();
+
+        // await fetchCurrentLoan(currentLoan.id);
+        // await fetchQueueLoans();
+        // await fetchDropdownLoans();
       }
     } catch (error: any) {
       console.error("Payment failed:", error);

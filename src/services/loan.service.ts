@@ -1,6 +1,6 @@
 import { loanEndpoint } from "../api/endpoints/loan.endpoint";
 import toast from "react-hot-toast";
-import { CreateLoanPayload, EarlySettlementQuote, Loan, PaymentRecord } from "../api";
+import { CreateLoanPayload, EarlySettlementQuote, Loan, LoanStateCounts, PaymentRecord } from "../api";
 
 export class LoanService {
   private static instance: LoanService;
@@ -272,6 +272,33 @@ export class LoanService {
       console.error("Failed to delete loan:", error);
       toast.error(error.message || "Failed to delete loan");
       throw error;
+    }
+  }
+
+  /**
+   * Fetch loan status counts (used for nav badges, dashboards)
+   */
+  async getStateCounts(): Promise<LoanStateCounts> {
+    try {
+      const response = await loanEndpoint.getStateCounts();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.message || "Failed to fetch loan state counts");
+    } catch (error: any) {
+      console.error("Failed to fetch loan state counts:", error);
+      // Non-critical — return zeros so the UI doesn't break
+      return {
+        total: 0,
+        Pending_Approval: 0,
+        KYC_Pending: 0,
+        Approved_Pending_Disbursement: 0,
+        Active: 0,
+        Overdue: 0,
+        Settled: 0,
+        Early_Settled: 0,
+        Rejected: 0,
+      };
     }
   }
 

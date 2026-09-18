@@ -30,10 +30,12 @@ export const MainContent: React.FC<MainContentProps> = ({
   // Get UI functions from context
   const {
     refreshKey,
+    triggerRefresh,
     selectedLoanId,
     setSelectedLoanId,
     openLoanDetails,
     openNewLoanModal,
+    openDocumentPreview,
   } = useUI();
 
   switch (activeTab) {
@@ -62,13 +64,23 @@ export const MainContent: React.FC<MainContentProps> = ({
       );
 
     case "kyc":
-      return <KYCStudio initialLoanId={selectedLoanId} />;
+      return (
+        <KYCStudio
+          initialLoanId={selectedLoanId}
+          refresh={refreshKey}
+          onRefresh={triggerRefresh}
+          onOpenLoanDetails={openLoanDetails}
+          openDocumentPreview={openDocumentPreview}
+        />
+      );
 
     case "payments":
       return (
         <PaymentStudio
           initialLoanId={selectedLoanId}
           onOpenLoanDetails={openLoanDetails}
+          refresh={refreshKey}
+          onRefresh={triggerRefresh}
         />
       );
 
@@ -77,6 +89,8 @@ export const MainContent: React.FC<MainContentProps> = ({
         <EarlySettlementStudio
           initialLoanId={selectedLoanId}
           onOpenLoanDetails={openLoanDetails}
+          refresh={refreshKey}
+          onRefresh={triggerRefresh}
         />
       );
 
@@ -90,7 +104,10 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     case "users":
       return isManagerOrAdmin ? (
-        <UserManagement currentUser={currentUser!} />
+        <UserManagement 
+        currentUser={currentUser!}
+        refresh={refreshKey}
+         />
       ) : null;
 
     case "reports":

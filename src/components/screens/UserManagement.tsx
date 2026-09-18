@@ -31,6 +31,7 @@ import { toDateInput, toDateTimeDisplay } from "../../utils/loanUtils";
 
 interface UserManagementProps {
   currentUser: User;
+  refresh: number;
 }
 
 const PAGE_SIZE = 10;
@@ -89,6 +90,7 @@ const SkeletonRow: React.FC = () => (
  */
 export const UserManagement: React.FC<UserManagementProps> = ({
   currentUser,
+  refresh,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -172,7 +174,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder]);
+  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder, refresh]);
 
   // Load users on filter change
   useEffect(() => {

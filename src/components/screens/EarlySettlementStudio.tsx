@@ -41,6 +41,8 @@ import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
 interface EarlySettlementStudioProps {
   initialLoanId?: string | null;
   onOpenLoanDetails: (loanId: string) => void;
+  onRefresh: () => void;
+  refresh: number;
 }
 
 const EARLY_SETTLEMENT_COLUMNS: ColumnConfig[] = [
@@ -172,6 +174,8 @@ const AuthFormSkeleton: React.FC = () => (
 export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
+  onRefresh,
+  refresh,
 }) => {
   const { currentUser } = useAuth();
 
@@ -254,7 +258,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -277,7 +281,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -310,7 +314,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     } finally {
       setLoanLoading(false);
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     if (selectedLoanId) {
@@ -350,9 +354,11 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       setIsConfirmModalOpen(false);
       setShowClearanceCertificate(true);
 
-      await fetchCurrentLoan(currentLoan.id);
-      await fetchQueueLoans();
-      await fetchDropdownLoans();
+      onRefresh();
+
+      // await fetchCurrentLoan(currentLoan.id);
+      // await fetchQueueLoans();
+      // await fetchDropdownLoans();
     } catch (error: any) {
       console.error("Settlement failed:", error);
       toast.error(error?.message || "Failed to execute early settlement");
