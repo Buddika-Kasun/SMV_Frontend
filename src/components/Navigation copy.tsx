@@ -12,9 +12,6 @@ import {
   Download,
   Trash2,
   Check,
-  Menu,
-  X,
-  LogOut,
 } from "lucide-react";
 import { TabType } from "../types";
 import { User } from "../api";
@@ -29,7 +26,6 @@ interface NavigationProps {
   overdueCount: number;
   activeConsultancyCount?: number;
   currentUser: User;
-  onLogout?: () => void;
 }
 
 const INSTALL_FLAG_KEY = "smv_pwa_installed_at";
@@ -42,14 +38,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   pendingKycCount,
   overdueCount,
   currentUser,
-  onLogout,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isManagerOrAdmin =
     currentUser.role === "admin" || currentUser.role === "manager";
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // ---------------------------------------------------------
   // PWA install / uninstall state
@@ -59,6 +52,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [isStandalone, setIsStandalone] = useState(false);
   const [showUninstallGuide, setShowUninstallGuide] = useState(false);
 
+  // Helper — recompute installed state from every available signal
   const recomputeInstalledState = useCallback(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
     const iosStandalone = (navigator as any).standalone === true;
@@ -69,22 +63,29 @@ export const Navigation: React.FC<NavigationProps> = ({
     const ttlMs = INSTALL_FLAG_TTL_DAYS * 24 * 60 * 60 * 1000;
     const flagIsFresh = installedAt > 0 && Date.now() - installedAt < ttlMs;
 
+    // Installed if: running standalone OR the flag is fresh
     setIsInstalled(standaloneNow || flagIsFresh);
   }, []);
 
   useEffect(() => {
     recomputeInstalledState();
 
+    // -------- Fresh install in this session --------
     const onInstalled = () => {
       localStorage.setItem(INSTALL_FLAG_KEY, Date.now().toString());
       setIsInstalled(true);
       setDeferredPrompt(null);
     };
 
+    // -------- Install prompt available --------
+    // Fires when the app is installable. Critically, it fires AGAIN
+    // after the user uninstalls the app from the OS.
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
 
+      // If we get a fresh prompt AND we're not in standalone mode,
+      // the previous install was removed — hide the uninstall button.
       const standaloneNow = window.matchMedia(
         "(display-mode: standalone)",
       ).matches;
@@ -94,6 +95,8 @@ export const Navigation: React.FC<NavigationProps> = ({
       }
     };
 
+    // -------- Re-check when the tab regains focus --------
+    // Catches the case: user opens standalone → uninstalls → returns to tab
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         recomputeInstalledState();
@@ -128,14 +131,14 @@ export const Navigation: React.FC<NavigationProps> = ({
   };
 
   // ---------------------------------------------------------
-  // Uninstall
+  // Uninstall — only opens the guide, no state changes
   // ---------------------------------------------------------
   const handleUninstallClick = () => {
     setShowUninstallGuide(true);
   };
 
   // ---------------------------------------------------------
-  // OS-specific uninstall guide
+  // OS-specific uninstall guide (with "close the app" first)
   // ---------------------------------------------------------
   const uninstallGuide = (() => {
     const ua = navigator.userAgent;
@@ -278,121 +281,73 @@ export const Navigation: React.FC<NavigationProps> = ({
   const handleTabClick = (tab: (typeof allTabs)[0]) => {
     onTabChange(tab.id);
     navigate(tab.path);
-    setIsMobileMenuOpen(false);
   };
 
-  // ---------------------------------------------------------
-  // Shared nav content
-  // ---------------------------------------------------------
-  const navContent = (
-    <>
+  return (
+    <aside className="w-full md:w-56 bg-white text-slate-800 flex flex-col shrink-0 border-r border-slate-200/80">
       {/* Brand Header */}
-      <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2.5 shrink-0">
-        <div
-          className="flex items-center gap-2.5 cursor-pointer min-w-0"
-          onClick={() => handleTabClick(allTabs[0])}
-        >
-          <img
-            src={logoIcon}
-            alt="SMV Holdings"
-            className="w-10 h-10 object-contain rounded-full shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="font-extrabold text-slate-900 tracking-tight text-sm block truncate">
-              SMV Holdings
-            </span>
-            <span className="text-[10px] text-blue-600 font-semibold block truncate">
-              Micro Finance Enterprise
-            </span>
-          </div>
-        </div>
-
-        {/* Close button — mobile only */}
-        <button
-          onClick={() => setIsMobileMenuOpen(false)}
-          className="md:hidden p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer shrink-0"
-          aria-label="Close menu"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Mobile-only: username + logout */}
-      <div className="md:hidden border-t border-slate-100 bg-slate-50/60 p-3 space-y-2 shrink-0 border-b-2">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-              currentUser.role === "admin"
-                ? "bg-blue-100 text-blue-800"
-                : currentUser.role === "manager"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-purple-100 text-purple-800"
-            }`}
-          >
-            {currentUser.fullName.substring(0, 2)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-900 text-xs truncate">
-                {currentUser.fullName}
-              </span>
-              <span
-                className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                  currentUser.role === "admin"
-                    ? "bg-blue-100 text-blue-800"
-                    : currentUser.role === "manager"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-purple-100 text-purple-800"
-                }`}
-              >
-                {currentUser.role}
-              </span>
-            </div>
-            <span className="text-[10px] text-slate-400 block font-mono truncate">
-              @{currentUser.username}
-            </span>
-          </div>
+      <div
+        className="px-4 py-2 border-b border-slate-100 flex items-center gap-2.5 cursor-pointer"
+        onClick={() => handleTabClick(allTabs[0])}
+      >
+        <img
+          src={logoIcon}
+          alt="SMV Holdings"
+          className="w-10 h-10 object-contain rounded-full"
+        />
+        <div>
+          <span className="font-extrabold text-slate-900 tracking-tight text-sm block">
+            SMV Holdings
+          </span>
+          <span className="text-[10px] text-blue-600 font-semibold block">
+            Micro Finance Enterprise
+          </span>
         </div>
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 p-3 overflow-y-auto flex flex-col gap-1 scrollbar-none">
-        {allTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive =
-            activeTab === tab.id || location.pathname === tab.path;
+      <nav className="flex-1 p-3 overflow-x-auto md:overflow-y-auto flex md:flex-col scrollbar-none">
+        {/* Tabs */}
+        <div className="flex md:flex-col gap-1 md:w-full">
+          {allTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive =
+              activeTab === tab.id || location.pathname === tab.path;
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabClick(tab)}
-              className={`px-3 py-2 rounded-lg flex items-center justify-between text-xs transition cursor-pointer w-full ${
-                isActive
-                  ? "bg-blue-600 text-white font-medium shadow-xs"
-                  : "hover:bg-blue-50/80 text-slate-600 hover:text-blue-700 font-medium"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Icon
-                  className={`w-4 h-4 ${
-                    isActive ? "text-white" : "text-slate-400"
-                  }`}
-                />
-                <span className="whitespace-nowrap">{tab.label}</span>
-              </div>
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab)}
+                className={`px-3 py-2 rounded-lg flex items-center justify-between text-xs transition cursor-pointer shrink-0 md:w-full ${
+                  isActive
+                    ? "bg-blue-600 text-white font-medium shadow-xs"
+                    : "hover:bg-blue-50/80 text-slate-600 hover:text-blue-700 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon
+                    className={`w-4 h-4 ${
+                      isActive ? "text-white" : "text-slate-400"
+                    }`}
+                  />
+                  <span className="whitespace-nowrap">{tab.label}</span>
+                </div>
 
-              {tab.badge && (
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tab.badge.color}`}
-                >
-                  {tab.badge.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+                {tab.badge && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tab.badge.color}`}
+                  >
+                    {tab.badge.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Install App — desktop only */}
+        {/* --------------------------------------------------------- */}
+        {/* Install App — shown when not installed and prompt available */}
+        {/* --------------------------------------------------------- */}
         {deferredPrompt && !isInstalled && (
           <div className="hidden md:block mt-auto pt-3">
             <button
@@ -409,7 +364,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
-        {/* Uninstall App — desktop only */}
+        {/* --------------------------------------------------------- */}
+        {/* Uninstall App — stays until user actually uninstalls */}
+        {/* --------------------------------------------------------- */}
         {isInstalled && (
           <div className="hidden md:block mt-auto pt-3 space-y-2">
             {!isStandalone && (
@@ -431,23 +388,8 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
       </nav>
 
-      {onLogout && (
-        <div className="p-4">
-          <button
-            onClick={() => {
-              setIsMobileMenuOpen(false);
-              onLogout();
-            }}
-            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-semibold text-xs py-2 rounded-lg transition cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      )}
-
-      {/* Desktop footer */}
-      <div className="flex p-3 border-t border-slate-100 bg-slate-50/60 text-[10px] text-slate-500 items-center justify-between shrink-0">
+      {/* Minimal User Role Footer */}
+      <div className="p-3 border-t border-slate-100 bg-slate-50/60 text-[10px] text-slate-500 flex items-center justify-between">
         <div className="flex items-center gap-1.5 truncate">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
           <span className="font-medium truncate capitalize">
@@ -458,75 +400,11 @@ export const Navigation: React.FC<NavigationProps> = ({
           v1.0.0
         </span>
       </div>
-    </>
-  );
-
-  return (
-    <>
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-56 bg-white text-slate-800 flex-col shrink-0 border-r border-slate-200/80 h-full">
-        {navContent}
-      </aside>
-
-      {/* Mobile: brand bar with hamburger */}
-      <div className="md:hidden w-full bg-white border-b border-slate-200/80 flex items-center justify-between gap-2 px-3 py-2 shrink-0">
-        <div
-          className="flex items-center gap-2 min-w-0 cursor-pointer"
-          onClick={() => handleTabClick(allTabs[0])}
-        >
-          <img
-            src={logoIcon}
-            alt="SMV Holdings"
-            className="w-8 h-8 object-contain rounded-full shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="font-extrabold text-slate-900 tracking-tight text-xs block truncate">
-              SMV Holdings
-            </span>
-            <span className="text-[9px] text-blue-600 font-semibold block truncate">
-              Micro Finance
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer shrink-0"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Mobile drawer — right side with transitions */}
-      <div
-        className={`md:hidden fixed inset-0 z-50 ${
-          isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-        aria-hidden={!isMobileMenuOpen}
-      >
-        {/* Backdrop */}
-        <div
-          className={`absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ease-out ${
-            isMobileMenuOpen ? "opacity-100" : "opacity-0"
-          }`}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-
-        {/* Drawer panel — slides in from the RIGHT */}
-        <aside
-          className={`absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
-            isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          {navContent}
-        </aside>
-      </div>
 
       {/* Uninstall guide modal */}
       {showUninstallGuide && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-60 animate-in fade-in duration-150"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150"
           onClick={() => setShowUninstallGuide(false)}
         >
           <div
@@ -578,6 +456,6 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
       )}
-    </>
+    </aside>
   );
 };

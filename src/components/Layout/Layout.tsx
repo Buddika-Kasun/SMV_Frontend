@@ -20,7 +20,8 @@ export const Layout: React.FC<LayoutProps> = ({
   openNewLoanModal,
   openLoanDetails,
 }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout } =
+    useAuth();
 
   // const { activeConsultancyCount } = useConsultancies();
 
@@ -51,6 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({
         overdueCount={navCounts.overdue}
         // activeConsultancyCount={activeConsultancyCount}
         currentUser={currentUser}
+        onLogout={logout}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
@@ -64,9 +66,7 @@ export const Layout: React.FC<LayoutProps> = ({
         />
 
         <main className="overflow-y-auto flex flex-col flex-1">
-          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full">
-            {children}
-          </div>
+          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full">{children}</div>
 
           <Footer currentUser={currentUser} />
         </main>

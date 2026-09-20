@@ -136,10 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div> */}
 
       {/* Search Input */}
-      <div
-        ref={searchBoxRef}
-        className="relative hidden md:block flex-1 max-w-xl"
-      >
+      <div ref={searchBoxRef} className="relative flex-1 max-w-xl">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input
@@ -204,10 +201,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
       </div>
-      {/* Center Search & Quick Actions */}
-      <div className="flex items-center gap-3">
+      {/* Quick Actions */}
+      <div className="hidden lg:flex items-center gap-3">
         {/* Metric Summary — with skeletons while loading */}
-        <div className="hidden lg:flex items-center gap-3 text-xs pr-3 border-r border-slate-200/80">
+        <div className="flex items-center gap-3 text-xs pr-3 border-r border-slate-200/80">
           <div>
             <span className="text-slate-400 text-[10px] block font-medium">
               SMS Unit
@@ -249,14 +246,14 @@ export const Header: React.FC<HeaderProps> = ({
         {/* New Application */}
         <button
           onClick={onOpenNewLoanModal}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
+          className="hidden md:flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Application</span>
         </button>
 
         {/* Logged In User */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200/80">
+        <div className="hidden md:flex items-center gap-2 pl-2 border-l border-slate-200/80">
           <div className="flex items-center gap-2">
             <div
               className={`w-8 h-8 rounded-lg md:hidden flex items-center justify-center font-bold text-xs uppercase ${
