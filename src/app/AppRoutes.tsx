@@ -8,53 +8,48 @@ import { MainContent } from "../components/MainContent";
 import { Modals } from "../components/Modals/Modals";
 import { LoginScreen } from "../components/screens/LoginScreen";
 
+const getDefaultRoute = (role?: string): string => {
+  return role === "staff" ? "/applications" : "/dashboard";
+};
+
 export const AppRoutes: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, currentUser } = useAuth();
   const ui = useUI();
 
-  // console.log(
-  //   "AppRoutes - loading:",
-  //   loading,
-  //   "isAuthenticated:",
-  //   isAuthenticated,
-  // );
+  const defaultRoute = getDefaultRoute(currentUser?.role);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-slate-400 text-sm">Loading...</p>
+          <p className="mt-4 text-slate-500 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // If not authenticated, only show login
   if (!isAuthenticated) {
     return (
-      // <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-      // </BrowserRouter>
     );
   }
 
-  // If authenticated, show all routes
   return (
     <>
-      {/* <BrowserRouter> */}
       <Routes>
-        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Login + root → role-aware default */}
+        <Route path="/login" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/" element={<Navigate to={defaultRoute} replace />} />
 
-        {/* Dashboard Route */}
+        {/* Dashboard — admin/manager only */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={["admin", "manager"]}>
               <Layout
                 activeTab={ui.activeTab}
                 openNewLoanModal={ui.openNewLoanModal}
@@ -69,7 +64,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Applications Route */}
+        {/* Applications — everyone */}
         <Route
           path="/applications"
           element={
@@ -88,7 +83,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* KYC Route */}
+        {/* KYC — everyone */}
         <Route
           path="/kyc"
           element={
@@ -104,7 +99,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Payments Route */}
+        {/* Payments — everyone */}
         <Route
           path="/payments"
           element={
@@ -123,7 +118,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Settlement Route */}
+        {/* Settlement — everyone */}
         <Route
           path="/settlement"
           element={
@@ -142,7 +137,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Customers Route */}
+        {/* Customers — everyone */}
         <Route
           path="/customers"
           element={
@@ -161,11 +156,11 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Users Route */}
+        {/* Users — admin/manager only */}
         <Route
           path="/users"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole={["admin", "manager"]}>
               <Layout
                 activeTab="users"
                 openNewLoanModal={ui.openNewLoanModal}
@@ -177,11 +172,11 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Reports Route */}
+        {/* Reports — admin/manager only */}
         <Route
           path="/reports"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole={["admin", "manager"]}>
               <Layout
                 activeTab="reports"
                 openNewLoanModal={ui.openNewLoanModal}
@@ -196,13 +191,11 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Catch-all → role-aware default */}
+        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
       </Routes>
 
-      {/* Modals - rendered outside Routes but inside Router */}
       <Modals />
-      {/* </BrowserRouter> */}
     </>
   );
 };

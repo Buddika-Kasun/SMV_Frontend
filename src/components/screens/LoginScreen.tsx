@@ -46,8 +46,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           onLoginSuccess(result.user);
         }
 
+        // Route by role: staff land on applications, others on dashboard
+        const target =
+          result.user.role === "staff" ? "/applications" : "/dashboard";
+
         setTimeout(() => {
-          window.location.href = "/dashboard?from=login_success";
+          window.location.href = `${target}?from=login_success`;
         }, 1000);
       } else {
         setError(result.error || "Login failed");

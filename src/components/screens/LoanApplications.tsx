@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   useResizableColumns,
   ColumnConfig,
@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   LayoutList,
   Lock,
+  UserCheck,
 } from "lucide-react";
 import { Loan, LoanStateCounts, User } from "../../api";
 import { TabType } from "../../types";
@@ -29,6 +30,7 @@ import {
   getLoanStatusConfig,
   getLoanTypeLabel,
 } from "../../utils/loanUtils";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // ---------------------------------------------------------
 // Skeleton Row (List View)
@@ -182,6 +184,43 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   );
   const [countsLoading, setCountsLoading] = useState(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [userName, setUserName] = useState("");
+  const toastShown = useRef(false);
+
+  // Login welcome banner — shown when arriving from the login screen
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const from = params.get("from");
+
+    if (from === "login_success" && !toastShown.current) {
+      const userStr = localStorage.getItem("smv_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setUserName(user.fullName);
+          setShowWelcome(true);
+          toastShown.current = true;
+
+          toast.success(`Welcome back, ${user.fullName}!`, {
+            duration: 3000,
+            icon: "👋",
+          });
+
+          setTimeout(() => {
+            setShowWelcome(false);
+            navigate("/applications", { replace: true });
+          }, 4000);
+        } catch (error) {
+          console.error("Failed to parse user data:", error);
+        }
+      }
+    }
+  }, [location, navigate]);
+
   const canApprove =
     currentUser.role === "admin" || currentUser.role === "manager";
   const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
@@ -282,6 +321,58 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
   return (
     <div className="space-y-4 flex flex-col h-full">
+      {/* Welcome Banner — shown on login success */}
+      {showWelcome && (
+        <div className="bg-linear-to-r from-emerald-500 to-emerald-600 rounded-xl p-5 shadow-lg animate-in slide-in-from-top duration-500 border border-emerald-400/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <UserCheck className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-xl">
+                  Welcome back, {userName}! 👋
+                </h2>
+                <p className="text-emerald-100 text-sm mt-0.5">
+                  You have successfully logged in to SMV Holdings Micro Finance
+                  Portal
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/10">
+                <span className="text-white font-semibold text-xs flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
+                  ✓ Session Active
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWelcome(false);
+                  toastShown.current = false;
+                  navigate("/applications", { replace: true });
+                }}
+                className="text-white/70 hover:text-white transition p-1 cursor-pointer"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header & New Request Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
         <div>

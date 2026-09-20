@@ -62,6 +62,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(
     null,
   );
+  const [submitting, setSubmitting] = useState(false);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debouncedId = useDebounce(idNumber, 300);
 
@@ -165,30 +167,42 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     0,
   );
 
-  const handleSubmit = async(e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard — prevents double submit from rapid clicks or Enter key
+    if (submitting) return;
     if (!customerName || numericAmount <= 0) return;
 
-    const newLoan: CreateLoanPayload = {
-      customerName,
-      customerPhone,
-      idNumber,
-      loanType,
-      requestedAmount: numericAmount,
-      disbursedAmount: numericAmount,
-      interestRatePerAnnum: numericRate,
-      termMonths: numericTerm,
-      repaymentFrequency,
-      interestMethod,
-      processingFee: Math.round(numericAmount * PROCCESSIN_FEE),
-      earlySettlementPenaltyPercent: 2.5,
-      purpose: purpose || "Personal Financial Assistance",
-    };
+    setSubmitting(true);
 
-    await loanService.createLoan(newLoan);
+    try {
+      const newLoan: CreateLoanPayload = {
+        customerName,
+        customerPhone,
+        idNumber,
+        loanType,
+        requestedAmount: numericAmount,
+        disbursedAmount: numericAmount,
+        interestRatePerAnnum: numericRate,
+        termMonths: numericTerm,
+        repaymentFrequency,
+        interestMethod,
+        processingFee: Math.round(numericAmount * PROCCESSIN_FEE),
+        earlySettlementPenaltyPercent: 2.5,
+        purpose: purpose || "Personal Financial Assistance",
+      };
 
-    onRefresh();
-    onClose();
+      await loanService.createLoan(newLoan);
+
+      onRefresh();
+      onClose();
+    } catch (err) {
+      // Error already toasted inside loanService; keep the modal open
+      console.error("Loan create failed:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isAutofilled = Boolean(matchedCustomerId);
@@ -474,15 +488,20 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition cursor-pointer"
+              disabled={submitting}
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 rounded-lg font-medium text-xs transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-xs text-xs transition cursor-pointer"
+              disabled={submitting}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-xs text-xs transition cursor-pointer inline-flex items-center gap-1.5"
             >
-              Submit Loan Application
+              {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>
+                {submitting ? "Submitting…" : "Submit Loan Application"}
+              </span>
             </button>
           </div>
         </form>

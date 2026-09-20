@@ -442,7 +442,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             }
             onChange={(e) => setSelectedLoanId(e.target.value)}
             disabled={dropdownLoading}
-            className="bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 max-w-70 disabled:opacity-60"
+            className="hidden md:block bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 max-w-70 disabled:opacity-60"
           >
             <option value=" " disabled>
               {dropdownLoading
@@ -720,6 +720,27 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
           )}
         </div>
       )}
+
+      <select
+        value={
+          selectedLoanId && dropdownLoans.some((l) => l.id === selectedLoanId)
+            ? selectedLoanId
+            : " "
+        }
+        onChange={(e) => setSelectedLoanId(e.target.value)}
+        disabled={dropdownLoading}
+        className=" md:hidden bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 disabled:opacity-60"
+      >
+        <option value=" " disabled>
+          {dropdownLoading ? "Loading loans..." : "Select an active loan..."}
+        </option>
+        {dropdownLoans.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.customer?.fullName} ({l.loanNumber || l.id}) -{" "}
+            {getLoanStatusLabel(l.status)}
+          </option>
+        ))}
+      </select>
 
       {/* LOAN DETAIL + SETTLEMENT FORM */}
       {!currentLoan && !loanLoading ? (

@@ -245,7 +245,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
       {/* KYC Filter Tabs */}
       <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs overflow-x-auto text-xs">
-        <span className="text-slate-400 font-medium mr-1">KYC Filter:</span>
+        <span className="hidden md:block text-slate-400 font-medium mr-1">KYC Filter:</span>
         {(["All", "Pending", "Verified"] as const).map((tab) => {
           const count =
             tab === "All"
