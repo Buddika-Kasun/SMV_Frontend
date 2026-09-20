@@ -432,7 +432,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       </nav>
 
       {onLogout && (
-        <div className="p-4">
+        <div className="md:hidden p-4">
           <button
             onClick={() => {
               setIsMobileMenuOpen(false);
