@@ -43,7 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
+    <div className="flex flex-col md:flex-row h-dvh md:h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
       <Navigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
