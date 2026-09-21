@@ -679,7 +679,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       {/* Last Login / Created */}
                       <td className="px-4 py-3 text-[11px] text-slate-500">
                         <span className="block font-medium text-slate-700">
-                          {toDateTimeDisplay(user.lastLogin) || "Never logged in"}
+                          {toDateTimeDisplay(user.lastLogin) ||
+                            "Never logged in"}
                         </span>
                         <span className="text-[10px] text-slate-400">
                           Created: {toDateInput(user.createdAt)}
@@ -691,16 +692,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleOpenEdit(user)}
-                            className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
                             title="Edit User Profile"
+                            disabled={
+                              user.role == "admin" &&
+                              currentUser.role !== "admin"
+                            }
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
 
                           <button
                             onClick={() => handleOpenPasswordReset(user)}
-                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
                             title="Reset Password"
+                            disabled={
+                              user.role == "admin" &&
+                              currentUser.role !== "admin"
+                            }
                           >
                             <Key className="w-3.5 h-3.5" />
                           </button>
@@ -728,7 +737,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                             </button>
                           ) : (
                             <div
-                              className="p-1.5 text-slate-300"
+                              className="p-1.5 text-slate-300 cursor-not-allowed"
                               title="Primary Administrator account cannot be deactivated"
                             >
                               <Lock className="w-3.5 h-3.5" />

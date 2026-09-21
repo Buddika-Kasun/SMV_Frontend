@@ -118,28 +118,36 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white border border-slate-200 rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-lg animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
         {/* Header */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-sm">
-                  {loan.customer?.fullName}
-                </h3>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-bold ${getLoanStatusColor(loan.status)}`}
-                >
-                  {getLoanStatusLabel(loan.status)}
-                </span>
+        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center gap-2 justify-between">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded">
+                <FileText className="w-4 h-4" />
               </div>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                Contract ID: {loan.loanNumber} • Account:{" "}
-                {loan.account?.accountNumber} • ID No:{" "}
-                {loan.customer?.idNumber || "N/A"}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {loan.customer?.fullName}
+                  </h3>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold ${getLoanStatusColor(loan.status)}`}
+                  >
+                    {getLoanStatusLabel(loan.status)}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5 flex flex-col md:flex-row">
+                  <span>Contract ID: {loan.loanNumber} </span>
+                  <span>• Account: {loan.account?.accountNumber}</span>
+                  <span>• ID No: {loan.customer?.idNumber || "N/A"}</span>
+                </p>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="md:hidden p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -150,7 +158,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                     onClose();
                     onOpenPaymentModal(loan.id);
                   }}
-                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs transition shadow-xs cursor-pointer"
+                  className="flex-1 md:flex-none px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs transition shadow-xs cursor-pointer"
                 >
                   Enter Payment
                 </button>
@@ -159,7 +167,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                     onClose();
                     onOpenSettlement(loan.id);
                   }}
-                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-xs transition shadow-xs cursor-pointer"
+                  className="flex-1 md:flex-none px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-xs transition shadow-xs cursor-pointer"
                 >
                   Early Settlement
                 </button>
@@ -167,7 +175,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
+              className="hidden md:block p-1 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -269,26 +277,28 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       key={inst.installmentNumber}
                       className="hover:bg-slate-50/80"
                     >
-                      <td className="py-2 px-2.5 font-bold text-slate-500">
+                      <td className="py-2 px-2.5 font-bold text-slate-500 whitespace-nowrap">
                         #{inst.installmentNumber}
                       </td>
-                      <td className="py-2 px-2.5">{inst.dueDate}</td>
-                      <td className="py-2 px-2.5">
+                      <td className="py-2 px-2.5 whitespace-nowrap">
+                        {inst.dueDate}
+                      </td>
+                      <td className="py-2 px-2.5 whitespace-nowrap">
                         {formatCurrency(inst.principalAmount)}
                       </td>
-                      <td className="py-2 px-2.5 text-slate-500">
+                      <td className="py-2 px-2.5 text-slate-500 whitespace-nowrap">
                         {formatCurrency(inst.interestAmount)}
                       </td>
-                      <td className="py-2 px-2.5 font-bold text-slate-900">
+                      <td className="py-2 px-2.5 font-bold text-slate-900 whitespace-nowrap">
                         {formatCurrency(inst.totalInstallment + inst.lateFee)}
                       </td>
-                      <td className="py-2 px-2.5 text-teal-700 font-semibold">
+                      <td className="py-2 px-2.5 text-teal-700 font-semibold whitespace-nowrap">
                         {formatCurrency(inst.paidAmount)}
                       </td>
-                      <td className="py-2 px-2.5 text-blue-600 font-bold">
+                      <td className="py-2 px-2.5 text-blue-600 font-bold whitespace-nowrap">
                         {formatCurrency(inst.remainingAmount)}
                       </td>
-                      <td className="py-2 px-2.5 font-sans">
+                      <td className="py-2 px-2.5 font-sans whitespace-nowrap">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${getInstallmentStatusColor(inst.status)}`}
                         >
@@ -353,8 +363,8 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 <h4 className="font-bold text-slate-900 text-xs">
                   Customer Profile & Guarantor
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-slate-700 text-[11px]">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-slate-700 text-[11px]">
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       NIC / ID Number:
                     </span>
@@ -362,7 +372,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {loan.customer.idNumber || "N/A"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Name:
                     </span>
@@ -370,7 +380,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {loan.customer.fullName || "N/A"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Phone:
                     </span>
@@ -378,7 +388,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {loan.customer.phone || "N/A"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Address:
                     </span>
@@ -390,7 +400,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                         : "N/A"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Occupation:
                     </span>
@@ -399,7 +409,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {/* ({loan.customer.employerName || "N/A"}) */}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Monthly Income:
                     </span>
@@ -407,7 +417,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {formatCurrency(loan.customer.monthlyIncome || 0)}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Guarantor Name:
                     </span>
@@ -416,13 +426,13 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       {/* ({loan.guarantor?.relation || "N/A"}) */}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Guarantor Phone:
                     </span>
                     <span>{loan.guarantor?.phone || "N/A"}</span>
                   </div>
-                  <div>
+                  <div className="flex md:flex-col gap-2 md:gap-0">
                     <span className="text-slate-500 block text-[10px]">
                       Guarantor Relationship:
                     </span>
@@ -444,7 +454,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 <h4 className="font-bold text-slate-900 mb-1.5 text-xs">
                   Verified Documents
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {loan.documents?.map((d) => (
                     <div
                       key={d.id}
