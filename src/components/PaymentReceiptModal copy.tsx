@@ -44,7 +44,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
     try {
       const dataUrl = await toPng(receipt, {
-        pixelRatio: 2,
+        pixelRatio: 4,
         backgroundColor: "#ffffff",
         cacheBust: true,
         skipAutoScale: true,
@@ -71,8 +71,8 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
       });
 
       const pxToMm = 3.7795275591;
-      const widthMm = img.naturalWidth / 1 / pxToMm;
-      const heightMm = img.naturalHeight / 1 / pxToMm;
+      const widthMm = img.naturalWidth / 2 / pxToMm;
+      const heightMm = img.naturalHeight / 2 / pxToMm;
 
       const win = window.open("", "_blank", "width=800,height=900");
       if (!win) {

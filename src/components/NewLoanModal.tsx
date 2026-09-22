@@ -26,7 +26,7 @@ interface NewLoanModalProps {
   onRefresh: () => void;
 }
 
-const PROCCESSIN_FEE = 0.02;
+const PROCCESSIN_FEE = 0.00;
 
 interface CustomerSuggestion {
   id: string;

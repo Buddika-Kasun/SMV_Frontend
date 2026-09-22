@@ -271,8 +271,8 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     setDropdownLoading(true);
     try {
       const loans = await loanService.getLoansListByStatus([
-        "Active",
         "Overdue",
+        "Active",
       ]);
       setDropdownLoans(loans);
     } catch (error) {

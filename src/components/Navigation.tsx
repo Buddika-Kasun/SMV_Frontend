@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { TabType } from "../types";
 import { User } from "../api";
@@ -30,6 +31,7 @@ interface NavigationProps {
   activeConsultancyCount?: number;
   currentUser: User;
   onLogout?: () => void;
+  refresh?: () => void;
 }
 
 const INSTALL_FLAG_KEY = "smv_pwa_installed_at";
@@ -43,6 +45,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   overdueCount,
   currentUser,
   onLogout,
+  refresh,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,6 +61,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [isInstalled, setIsInstalled] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showUninstallGuide, setShowUninstallGuide] = useState(false);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const recomputeInstalledState = useCallback(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
@@ -110,6 +115,20 @@ export const Navigation: React.FC<NavigationProps> = ({
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [recomputeInstalledState]);
+
+  const handleRefresh = () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+
+    if (refresh) {
+      refresh();
+      // spin for a fixed window, then reset (no reload to tear down)
+      setTimeout(() => setIsRefreshing(false), 800);
+    } else {
+      // give the user a moment to see the spin before the page blanks
+      setTimeout(() => window.location.reload(), 800);
+    }
+  };
 
   // ---------------------------------------------------------
   // Install
@@ -305,6 +324,20 @@ export const Navigation: React.FC<NavigationProps> = ({
               Micro Finance Enterprise
             </span>
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRefresh();
+            }}
+            disabled={isRefreshing}
+            className="hidden md:block p-1.5 text-slate-400 hover:text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+            aria-label="Refresh"
+            title="Refresh"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefreshing ? "animate-[spin_0.6s_linear_infinite]" : ""}`}
+            />
+          </button>
         </div>
 
         {/* Close button — mobile only */}
@@ -489,13 +522,30 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer shrink-0"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRefresh();
+            }}
+            disabled={isRefreshing}
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+            aria-label="Refresh"
+            title="Refresh"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefreshing ? "animate-[spin_0.6s_linear_infinite]" : ""}`}
+            />
+          </button>
+
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer shrink-0"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer — right side with transitions */}

@@ -47,7 +47,7 @@ export const ClearanceCertificateModal: React.FC<
 
     try {
       const dataUrl = await toPng(cert, {
-        pixelRatio: 4,
+        pixelRatio: 3,
         backgroundColor: "#ffffff",
         cacheBust: true,
         skipAutoScale: true,
@@ -74,8 +74,8 @@ export const ClearanceCertificateModal: React.FC<
       });
 
       const pxToMm = 3.7795275591;
-      const widthMm = img.naturalWidth / 1.8 / pxToMm;
-      const heightMm = img.naturalHeight / 2.2 / pxToMm;
+      const widthMm = img.naturalWidth / 1 / pxToMm;
+      const heightMm = img.naturalHeight / 1 / pxToMm;
 
       const win = window.open("", "_blank", "width=800,height=900");
       if (!win) {
@@ -188,7 +188,7 @@ export const ClearanceCertificateModal: React.FC<
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white border border-slate-200/80 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-white border border-slate-200/80 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header Bar — pinned (not captured) */}
         <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

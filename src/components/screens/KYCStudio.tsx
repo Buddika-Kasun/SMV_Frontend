@@ -267,8 +267,8 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     setDropdownLoading(true);
     try {
       const loans = await loanService.getLoansListByStatus([
-        "KYC_Pending",
         "Approved_Pending_Disbursement",
+        "KYC_Pending",
       ]);
       setDropdownLoans(loans);
     } catch (error) {
@@ -322,7 +322,8 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
         guarantorName: loan.guarantor?.fullName || "",
         guarantorPhone: loan.guarantor?.phone || "",
         guarantorRelation: loan.guarantor?.relation || "Relative",
-        deductedFee: loan.processingFee.toString() || "0",
+        // deductedFee: loan.processingFee.toString() || "0",
+        deductedFee: "0",
         // bankName: loan.kyc?.bankName || "",
         // accountNumber: loan.kyc?.accountNumber || "",
       });
@@ -1353,7 +1354,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  {/* <div className="flex items-center justify-between gap-2">
                     <label
                       htmlFor="deductedFee"
                       className="text-slate-500 shrink-0"
@@ -1384,7 +1385,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                         />
                       )}
                     </div>
-                  </div>
+                  </div> */}
                   <div className="flex justify-between pt-1.5 border-t border-slate-200/60">
                     <span className="text-slate-900 font-semibold">
                       Net Disbursed:
