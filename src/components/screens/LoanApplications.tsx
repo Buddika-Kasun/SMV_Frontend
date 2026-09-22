@@ -165,6 +165,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   const [loans, setLoans] = useState<Loan[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingConfirmation, setLoadingConfirmation] = useState(false);
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState<string>("Pending_Approval");
@@ -282,17 +283,21 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
   const handleConfirmApproval = async () => {
     if (!loanToApprove) return;
+    setLoadingConfirmation(true);
     try {
       await loanService.approveLoan(loanToApprove.id);
       setLoanToApprove(null);
       fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
+    } finally {
+      setLoadingConfirmation(false);
     }
   };
 
   const handleConfirmRejection = async () => {
     if (!loanToReject) return;
+    setLoadingConfirmation(true);
     try {
       await loanService.rejectLoan(loanToReject.id, rejectReason);
       setLoanToReject(null);
@@ -300,6 +305,8 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
+    } finally{
+      setLoadingConfirmation(false);
     }
   };
 
@@ -964,6 +971,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
         confirmLabel="Confirm Rejection"
         cancelLabel="Keep Application"
         variant="danger"
+        isLoading={loadingConfirmation}
         input={{
           label: "Rejection Reason",
           placeholder:

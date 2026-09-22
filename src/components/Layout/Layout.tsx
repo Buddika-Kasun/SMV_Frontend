@@ -25,7 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // const { activeConsultancyCount } = useConsultancies();
 
-  const { navCounts, setActiveTab, refreshKey } = useUI();
+  const { navCounts, setActiveTab, refreshKey, triggerRefresh } = useUI();
 
   // If no current user, don't render
   if (!currentUser) {
@@ -43,7 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
+    <div className="flex flex-col md:flex-row h-dvh md:h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
       <Navigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -53,6 +53,7 @@ export const Layout: React.FC<LayoutProps> = ({
         // activeConsultancyCount={activeConsultancyCount}
         currentUser={currentUser}
         onLogout={logout}
+        refresh={triggerRefresh}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">

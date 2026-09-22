@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   refresh,
 }) => {
-  console.log("refresh : ", refresh);
+  // console.log("refresh : ", refresh);
   // ---------------------------------------------------------
   // Header stats (self-fetched)
   // ---------------------------------------------------------
@@ -217,30 +217,34 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </div>
-          <div>
-            <span className="text-slate-400 text-[10px] block font-medium">
-              Disbursed
-            </span>
-            {statsLoading ? (
-              <div className="h-3.5 w-20 bg-slate-200 rounded animate-pulse mt-0.5" />
-            ) : (
-              <span className="font-semibold text-slate-900">
-                {formatCurrency(totalDisbursed)}
-              </span>
-            )}
-          </div>
-          <div>
-            <span className="text-slate-400 text-[10px] block font-medium">
-              Outstanding
-            </span>
-            {statsLoading ? (
-              <div className="h-3.5 w-20 bg-slate-200 rounded animate-pulse mt-0.5" />
-            ) : (
-              <span className="font-bold text-blue-600">
-                {formatCurrency(totalOutstanding)}
-              </span>
-            )}
-          </div>
+          {currentUser.role !== "staff" && (
+            <>
+              <div>
+                <span className="text-slate-400 text-[10px] block font-medium">
+                  Disbursed
+                </span>
+                {statsLoading ? (
+                  <div className="h-3.5 w-20 bg-slate-200 rounded animate-pulse mt-0.5" />
+                ) : (
+                  <span className="font-semibold text-slate-900">
+                    {formatCurrency(totalDisbursed)}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] block font-medium">
+                  Outstanding
+                </span>
+                {statsLoading ? (
+                  <div className="h-3.5 w-20 bg-slate-200 rounded animate-pulse mt-0.5" />
+                ) : (
+                  <span className="font-bold text-blue-600">
+                    {formatCurrency(totalOutstanding)}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* New Application */}
