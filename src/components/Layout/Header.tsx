@@ -9,6 +9,7 @@ import { dashboardService } from "@/src/services/dashboard.service";
 import { formatCurrency } from "@/src/utils/consultancyUtils";
 import { getLoanStatusLabel } from "@/src/utils/loanUtils";
 import { useDebounce } from "@/src/hooks/useDebounce";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface HeaderProps {
   onOpenNewLoanModal: () => void;
@@ -17,7 +18,8 @@ interface HeaderProps {
   currentUser: User;
   onLogout: () => void;
   /** Bump this number to force the header to refetch (e.g. after creating a loan). */
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const SEARCH_LIMIT = 10;
@@ -27,7 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectLoan,
   currentUser,
   onLogout,
-  refresh,
+  // refresh,
+  refreshChannels,
 }) => {
   // console.log("refresh : ", refresh);
   // ---------------------------------------------------------
@@ -35,6 +38,8 @@ export const Header: React.FC<HeaderProps> = ({
   // ---------------------------------------------------------
   const [headerStats, setHeaderStats] = useState<DashboardHeader | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  const refreshChannel = refreshChannels[RefreshChannel.Stats] ?? 0;
 
   const fetchHeaderStats = useCallback(async () => {
     setStatsLoading(true);
@@ -50,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     fetchHeaderStats();
-  }, [fetchHeaderStats, refresh]);
+  }, [fetchHeaderStats, refreshChannel]);
 
   const totalDisbursed = headerStats?.totalDisbursedAmount ?? 0;
   const totalOutstanding = headerStats?.totalOutstanding ?? 0;

@@ -7,10 +7,18 @@ import React, {
   useEffect,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { TabType } from "../types";
 import { NavigationCounts } from "../api/types/dashboard.types";
 import { dashboardService } from "../services/dashboard.service";
 import { LoanDocument } from "../api";
+import { TabType } from "../types/app.types";
+import { RealtimeEvent } from "../types/realtime.types";
+import {
+  RefreshChannel,
+  RefreshChannelKey,
+} from "../constants/refreshChannels";
+import toast from "react-hot-toast";
+import { useRealtimeEvents } from "../hooks/useRealtimeEvents";
+import { useAuth } from "./AuthContext";
 
 interface UIContextType {
   activeTab: TabType;
@@ -55,7 +63,7 @@ interface UIContextType {
    * E.g. `triggerRefresh("payments")` will only bump that channel.
    */
   refreshChannels: Record<string, number>;
-  triggerRefreshChannel: (channel: string) => void;
+  triggerRefreshChannel: (channel: RefreshChannelKey) => void;
 
   // ---------------------------------------------------------
   // Navigation counts (badges)
@@ -97,14 +105,25 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
-    console.log("refresh key : ", refreshKey);
+    setRefreshChannels((prev) => {
+      const next: Record<string, number> = { ...prev };
+      for (const channel of Object.values(RefreshChannel)) {
+        next[channel] = (prev[channel] ?? 0) + 1;
+      }
+      // console.log("[channels] refresh-all:", next);
+      return next;
+    });
   }, []);
 
   const triggerRefreshChannel = useCallback((channel: string) => {
-    setRefreshChannels((prev) => ({
-      ...prev,
-      [channel]: (prev[channel] ?? 0) + 1,
-    }));
+    setRefreshChannels((prev) => {
+      const next = {
+        ...prev,
+        [channel]: (prev[channel] ?? 0) + 1,
+      };
+      console.log("[channels] update:", next);
+      return next;
+    });
   }, []);
 
   // Auth check — only fetch nav counts when a session exists
@@ -135,15 +154,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       setNavCounts(counts);
     } catch {
       setNavCounts({ pendingApproval: 0, pendingKyc: 0, overdue: 0 });
-    }
-    finally {
+    } finally {
       setNavCountsLoading(false);
     }
   }, []);
 
+  const navChannel = refreshChannels[RefreshChannel.Nav] ?? 0;
+
   useEffect(() => {
     refreshNavCounts();
-  }, [refreshNavCounts, refreshKey]);
+  }, [refreshNavCounts, refreshKey, navChannel]);
 
   // Sync activeTab with URL path
   useEffect(() => {
@@ -221,6 +241,56 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setPreviewDocument(null);
   }, []);
 
+  // ---------------------------------------------------------
+  // Realtime bridge — SSE → refresh channels + toasts
+  // ---------------------------------------------------------
+  // Read the token from wherever your auth stores it.
+  // If you have an AuthContext, use `const { token } = useAuth();` here instead.
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
+  // const { token } = useAuth();
+  const handleRealtimeEvent = useCallback(
+    (event: RealtimeEvent) => {
+      // console.log("[bridge] event:", event.type, event.payload);
+
+      // Global fallback — anything watching `refreshKey` re-fetches
+      // triggerRefresh();
+
+      switch (event.type) {
+        case "loans.changed":
+          // A loan was created/approved/rejected/disbursed by someone else
+          triggerRefreshChannel(RefreshChannel.Loans);
+          triggerRefreshChannel(RefreshChannel.Nav);
+          // triggerRefreshChannel(RefreshChannel.Stats);
+          break;
+
+        case "payment.recorded":
+          triggerRefreshChannel(RefreshChannel.Payments);
+          // triggerRefreshChannel(RefreshChannel.Loans);
+          // triggerRefreshChannel(RefreshChannel.Stats);
+          break;
+
+        case "stats.changed":
+          triggerRefreshChannel(RefreshChannel.Stats);
+          break;
+
+        case "notification.created":
+          // Optional toast for the notification popup
+          toast(event.payload.title ?? "New notification", { icon: "🔔" });
+          triggerRefreshChannel(RefreshChannel.Nav);
+          break;
+
+        case "users.changed":
+          triggerRefreshChannel(RefreshChannel.Users);
+          break;
+      }
+    },
+    [triggerRefreshChannel],
+  );
+
+  useRealtimeEvents({ token, onEvent: handleRealtimeEvent });
+
   const value: UIContextType = {
     activeTab,
     setActiveTab,
@@ -258,7 +328,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
-};;
+};
 
 export const useUI = (): UIContextType => {
   const context = useContext(UIContext);

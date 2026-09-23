@@ -38,12 +38,14 @@ import {
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts";
 import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface PaymentStudioProps {
   initialLoanId?: string | null;
   onOpenLoanDetails: (loanId: string) => void;
-  onRefresh: () => void;
-  refresh: number;
+  // onRefresh: () => void;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const PAYMENT_QUEUE_COLUMNS: ColumnConfig[] = [
@@ -148,8 +150,9 @@ const PaymentFormSkeleton: React.FC = () => (
 export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
-  onRefresh,
-  refresh,
+  // onRefresh,
+  // refresh,
+  refreshChannels,
 }) => {
   const { currentUser } = useAuth();
 
@@ -201,6 +204,12 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
 
   const pageSize = queueViewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const refreshChannel =
+    refreshChannels[RefreshChannel.Loans] ??
+    refreshChannels[RefreshChannel.Payments] ??
+    refreshChannels[RefreshChannel.Settlements] ??
+    0;
+
   const {
     columnWidths,
     startResize,
@@ -236,7 +245,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refreshChannel]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -259,7 +268,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, [refresh]);
+  }, [refreshChannel]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -309,7 +318,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     if (selectedLoanId) {
       fetchCurrentLoan(selectedLoanId);
     }
-  }, [selectedLoanId, fetchCurrentLoan, refresh]);
+  }, [selectedLoanId, fetchCurrentLoan, refreshChannel]);
 
   // ---------------------------------------------------------
   // Handlers
@@ -351,7 +360,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
       if (payment) {
         setLastPaymentRecord(payment);
 
-        onRefresh();
+        // onRefresh();
 
         // await fetchCurrentLoan(currentLoan.id);
         // await fetchQueueLoans();

@@ -17,9 +17,11 @@ import { CustomerData } from "../../api";
 import { customerService } from "../../services/customer.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface CustomerDirectoryProps {
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
   onSelectLoan: (loanId: string) => void;
 }
 
@@ -106,7 +108,8 @@ const GRID_PAGE_SIZE = 9;
 type KycFilter = "All" | "Verified" | "Pending";
 
 export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
-  refresh,
+  // refresh,
+  refreshChannels,
   onSelectLoan,
 }) => {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
@@ -127,6 +130,12 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
   const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const refreshChannel =
+        refreshChannels[RefreshChannel.Loans] ??
+        refreshChannels[RefreshChannel.Payments] ??
+        refreshChannels[RefreshChannel.Settlements] ??
+        0;
+
   const fetchStats = useCallback(async () => {
     try {
       const s = await customerService.getStats();
@@ -138,7 +147,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats, refresh]);
+  }, [fetchStats, refreshChannel]);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -164,7 +173,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, debouncedSearch, filterKyc, refresh]);
+  }, [currentPage, pageSize, debouncedSearch, filterKyc, refreshChannel]);
 
   useEffect(() => {
     fetchCustomers();

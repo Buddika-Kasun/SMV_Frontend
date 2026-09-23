@@ -20,7 +20,6 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Loan, LoanStateCounts, User } from "../../api";
-import { TabType } from "../../types";
 import { formatCurrency } from "../../utils/consultancyUtils";
 import { loanService } from "../../services/loan.service";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -31,6 +30,9 @@ import {
   getLoanTypeLabel,
 } from "../../utils/loanUtils";
 import { useLocation, useNavigate } from "react-router-dom";
+import { TabType } from "@/src/types/app.types";
+import { useUI } from "@/src/contexts";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 // ---------------------------------------------------------
 // Skeleton Row (List View)
@@ -119,7 +121,7 @@ const SkeletonCard: React.FC = () => (
 );
 
 interface LoanApplicationsProps {
-  refresh: number;
+  refreshChannels: Record<string, number>;
   onOpenLoanDetails: (loanId: string) => void;
   onSelectLoan: (loanId: string) => void;
   onOpenNewLoanModal: () => void;
@@ -154,7 +156,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const LoanApplications: React.FC<LoanApplicationsProps> = ({
-  refresh,
+  refreshChannels,
   onOpenLoanDetails,
   onSelectLoan,
   onOpenNewLoanModal,
@@ -191,6 +193,8 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   const [showWelcome, setShowWelcome] = useState(false);
   const [userName, setUserName] = useState("");
   const toastShown = useRef(false);
+
+  const loansChannel = refreshChannels[RefreshChannel.Loans] ?? 0;
 
   // Login welcome banner — shown when arriving from the login screen
   useEffect(() => {
@@ -249,7 +253,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
   useEffect(() => {
     fetchStatusCounts();
-  }, [fetchStatusCounts, refresh]);
+  }, [fetchStatusCounts, loansChannel]);
 
   // Fetch loans from API
   const fetchLoans = useCallback(async () => {
@@ -274,7 +278,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, debouncedSearch, filterStatus, refresh]);
+  }, [currentPage, pageSize, debouncedSearch, filterStatus, loansChannel]);
 
   // Load on filter/page change
   useEffect(() => {
@@ -287,7 +291,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
     try {
       await loanService.approveLoan(loanToApprove.id);
       setLoanToApprove(null);
-      fetchLoans();
+      // fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
     } finally {
@@ -302,7 +306,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       await loanService.rejectLoan(loanToReject.id, rejectReason);
       setLoanToReject(null);
       setRejectReason("");
-      fetchLoans();
+      // fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
     } finally{

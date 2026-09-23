@@ -17,10 +17,10 @@ import {
   LogOut,
   RefreshCw,
 } from "lucide-react";
-import { TabType } from "../types";
 import { User } from "../api";
 
 import logoIcon from "@/src/assets/logo2.jpg";
+import { TabType } from "../types/app.types";
 
 interface NavigationProps {
   activeTab: TabType;

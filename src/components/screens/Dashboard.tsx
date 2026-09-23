@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { TabType } from "../../types";
 import {
   Banknote,
   TrendingUp,
@@ -26,10 +25,13 @@ import {
   getLoanStatusLabel,
   getLoanTypeLabel,
 } from "../../utils/loanUtils";
+import { TabType } from "@/src/types/app.types";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface DashboardProps {
   currentUser: User;
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
   onTabChange: (tab: TabType) => void;
   onSelectLoan: (loanId: string) => void;
   onOpenNewLoanModal: () => void;
@@ -56,7 +58,8 @@ const TableRowSkeleton: React.FC<{ cols: number }> = ({ cols }) => (
 
 export const Dashboard: React.FC<DashboardProps> = ({
   currentUser,
-  refresh,
+  // refresh,
+  refreshChannels,
   onTabChange,
   onSelectLoan,
   onOpenNewLoanModal,
@@ -71,6 +74,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const refreshChannel =
+    refreshChannels[RefreshChannel.Stats] ??
+    refreshChannels[RefreshChannel.Loans] ??
+    refreshChannels[RefreshChannel.Payments] ??
+    refreshChannels[RefreshChannel.Settlements] ??
+    0;
 
   // Login welcome
   useEffect(() => {
@@ -118,7 +128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard, refresh]);
+  }, [fetchDashboard, refreshChannel]);
 
   // Derived
   const totalDisbursed = stats?.totalDisbursedAmount ?? 0;

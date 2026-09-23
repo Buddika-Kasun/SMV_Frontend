@@ -35,6 +35,7 @@ import { loanService } from "../../services/loan.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { DocumentPreviewModal } from "../DocumentPreviewModal";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 // ---------------------------------------------------------
 // Skeleton Row (Queue List View)
@@ -119,8 +120,9 @@ const FieldSlot: React.FC<{
 
 interface KYCStudioProps {
   initialLoanId?: string | null;
-  onRefresh: () => void;
-  refresh: number;
+  // onRefresh: () => void;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
   onOpenLoanDetails: (loanId: string) => void;
   openDocumentPreview: (doc: LoanDocument) => void;
 }
@@ -154,8 +156,9 @@ const DOCUMENT_TYPES = [
 
 export const KYCStudio: React.FC<KYCStudioProps> = ({
   initialLoanId,
-  onRefresh,
-  refresh,
+  // onRefresh,
+  // refresh,
+  refreshChannels,
   onOpenLoanDetails,
   openDocumentPreview,
 }) => {
@@ -228,6 +231,8 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
   const pageSize = queueViewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const loansChannel = refreshChannels[RefreshChannel.Loans] ?? 0;
+
   // ---------------------------------------------------------
   // Fetch queue loans for TABLE/GRID (listLoans + params)
   // ---------------------------------------------------------
@@ -254,7 +259,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, loansChannel]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -277,7 +282,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, [refresh]);
+  }, [loansChannel]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -339,7 +344,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     if (selectedLoanId) {
       fetchCurrentLoan(selectedLoanId);
     }
-  }, [selectedLoanId, fetchCurrentLoan, refresh]);
+  }, [selectedLoanId, fetchCurrentLoan, loansChannel]);
 
   // ---------------------------------------------------------
   // Form handlers
@@ -386,7 +391,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
       await loanService.updateKYC(currentLoan.id, kycPayload);
 
-      onRefresh();
+      // onRefresh();
 
       // await fetchCurrentLoan(currentLoan.id);
       // await fetchQueueLoans();
@@ -470,7 +475,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
       setDocFile(null);
       setDocFileName("");
 
-      onRefresh();
+      // onRefresh();
 
       // await fetchCurrentLoan(currentLoan.id);
       // await fetchQueueLoans();
@@ -496,7 +501,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
       );
       setIsDisburseConfirmOpen(false);
 
-      onRefresh();
+      // onRefresh();
 
       // await fetchCurrentLoan(currentLoan.id);
       // await fetchQueueLoans();

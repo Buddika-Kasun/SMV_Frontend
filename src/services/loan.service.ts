@@ -132,7 +132,7 @@ export class LoanService {
     try {
       const response = await loanEndpoint.reject(id, reason);
       if (response.success && response.data) {
-        toast.error(`Loan ${response.data?.loanNumber} rejected`);
+        toast.success(`Loan ${response.data?.loanNumber} rejected`);
         return response.data;
       }
       throw new Error(response.message || "Failed to reject loan");

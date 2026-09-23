@@ -37,12 +37,14 @@ import {
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts";
 import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface EarlySettlementStudioProps {
   initialLoanId?: string | null;
   onOpenLoanDetails: (loanId: string) => void;
-  onRefresh: () => void;
-  refresh: number;
+  // onRefresh: () => void;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const EARLY_SETTLEMENT_COLUMNS: ColumnConfig[] = [
@@ -174,8 +176,9 @@ const AuthFormSkeleton: React.FC = () => (
 export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
-  onRefresh,
-  refresh,
+  // onRefresh,
+  // refresh,
+  refreshChannels,
 }) => {
   const { currentUser } = useAuth();
 
@@ -223,6 +226,12 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
   const pageSize = queueViewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const refreshChannel =
+      refreshChannels[RefreshChannel.Loans] ??
+      refreshChannels[RefreshChannel.Payments] ??
+      refreshChannels[RefreshChannel.Settlements] ??
+      0;
+
   const {
     columnWidths,
     startResize,
@@ -258,7 +267,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus, refresh]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refreshChannel]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -281,7 +290,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, [refresh]);
+  }, [refreshChannel]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -302,19 +311,24 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   // ---------------------------------------------------------
   // Fetch current loan
   // ---------------------------------------------------------
-  const fetchCurrentLoan = useCallback(async (loanId: string) => {
-    setLoanLoading(true);
-    try {
-      const loan = await loanService.getLoanById(loanId);
-      setCurrentLoan(loan);
-      setReferenceNumber(`STL-${Math.floor(100000 + Math.random() * 900000)}`);
-    } catch (error) {
-      console.error("Failed to fetch loan:", error);
-      setCurrentLoan(null);
-    } finally {
-      setLoanLoading(false);
-    }
-  }, [refresh]);
+  const fetchCurrentLoan = useCallback(
+    async (loanId: string) => {
+      setLoanLoading(true);
+      try {
+        const loan = await loanService.getLoanById(loanId);
+        setCurrentLoan(loan);
+        setReferenceNumber(
+          `STL-${Math.floor(100000 + Math.random() * 900000)}`,
+        );
+      } catch (error) {
+        console.error("Failed to fetch loan:", error);
+        setCurrentLoan(null);
+      } finally {
+        setLoanLoading(false);
+      }
+    },
+    [refreshChannel],
+  );
 
   useEffect(() => {
     if (selectedLoanId) {
@@ -354,7 +368,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       setIsConfirmModalOpen(false);
       setShowClearanceCertificate(true);
 
-      onRefresh();
+      // onRefresh();
 
       // await fetchCurrentLoan(currentLoan.id);
       // await fetchQueueLoans();

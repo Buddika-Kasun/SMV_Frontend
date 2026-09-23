@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from "react";
-import { TabType } from "../../types";
 import {
   Banknote,
   TrendingUp,
@@ -21,6 +20,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Loan, User } from "../../api";
 import { formatCurrency } from "../../utils/consultancyUtils";
 import { getLoanStatusColor, getLoanStatusConfig, getLoanStatusLabel, getLoanTypeLabel } from "../../utils/loanUtils";
+import { TabType } from "@/src/types/app.types";
 
 interface DashboardProps {
   loans: Loan[];

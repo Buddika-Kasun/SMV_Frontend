@@ -28,10 +28,12 @@ import toast from "react-hot-toast";
 import { useDebounce } from "../../hooks/useDebounce";
 import { User, UserRole } from "../../api";
 import { toDateInput, toDateTimeDisplay } from "../../utils/loanUtils";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface UserManagementProps {
   currentUser: User;
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const PAGE_SIZE = 10;
@@ -90,7 +92,8 @@ const SkeletonRow: React.FC = () => (
  */
 export const UserManagement: React.FC<UserManagementProps> = ({
   currentUser,
-  refresh,
+  // refresh,
+  refreshChannels,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -98,6 +101,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(true);
+
+  const refreshChannel = refreshChannels[RefreshChannel.Users] ?? 0;
+  
 
   // Filter states
   const [search, setSearch] = useState("");
@@ -174,7 +180,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder, refresh]);
+  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder, refreshChannel]);
 
   // Load users on filter change
   useEffect(() => {
@@ -251,7 +257,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (res.success && res.user) {
       toast.success(`User "${res.user.fullName}" created successfully!`);
       setIsCreateModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to create user.");
     }
@@ -284,7 +290,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (res.success) {
       toast.success(`User details for "${selectedUser.fullName}" updated!`);
       setIsEditModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to update user.");
     }
@@ -318,7 +324,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (res.success) {
       toast.success(`Password updated for user "${selectedUser.fullName}"!`);
       setIsPasswordModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to reset password.");
     }
@@ -341,7 +347,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       toast.success(
         `User "${userToToggleStatus.fullName}" ${newStatus ? "activated" : "deactivated"}.`,
       );
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Status update failed.");
     }
@@ -359,7 +365,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     setUserToDelete(null);
     if (res.success) {
       toast.success(`User account deleted.`);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to delete user.");
     }
@@ -368,7 +374,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleConfirmResetDefaults = async () => {
     await userService.resetToDefaults();
     setIsResetDefaultsConfirmOpen(false);
-    fetchUsers();
+    // fetchUsers();
     toast.success(
       "User database reset to defaults. Canonical sysadmin, manager, and staff accounts restored.",
     );

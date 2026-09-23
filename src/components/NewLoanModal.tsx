@@ -195,7 +195,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 
       await loanService.createLoan(newLoan);
 
-      onRefresh();
+      // onRefresh();
       onClose();
     } catch (err) {
       // Error already toasted inside loanService; keep the modal open
