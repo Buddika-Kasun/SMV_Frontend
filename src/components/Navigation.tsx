@@ -336,7 +336,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <img
             src={logoIcon}
             alt={BRAND.name}
-            className="w-10 h-10 object-contain rounded-full shrink-0"
+            className="w-10 h-10 object-contain shrink-0"
           />
           <div className="min-w-0">
             <span className="font-extrabold text-slate-900 tracking-tight text-sm block truncate">
@@ -532,7 +532,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <img
             src={logoIcon}
             alt={BRAND.name}
-            className="w-8 h-8 object-contain rounded-full shrink-0"
+            className="w-8 h-8 object-contain shrink-0"
           />
           <div className="min-w-0">
             <span className="font-extrabold text-slate-900 tracking-tight text-xs block truncate">
