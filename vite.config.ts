@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { BRAND } from "./src/config/brand";
 
 export default defineConfig(({ mode }) => {
   // loadEnv reads .env files + process.env with the given prefix.
@@ -30,10 +31,10 @@ export default defineConfig(({ mode }) => {
         injectRegister: "auto",
         includeAssets: ["favicon.ico", "apple-touch-icon.png"],
         manifest: {
-          name: "SMV Finance",
-          short_name: "SMV Finance",
+          name: `${BRAND.shortName}`,
+          short_name: `${BRAND.shortName}`,
           description:
-            "Micro Finance Management Enterprise Portal — Loans, KYC, Payments, and Reports.",
+            `${BRAND.tagline} Management Enterprise Portal — Loans, KYC, Payments, and Reports.`,
           theme_color: "#2563eb",
           background_color: "#f8fafc",
           display: "standalone",

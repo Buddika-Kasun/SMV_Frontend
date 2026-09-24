@@ -27,6 +27,7 @@ import {
 } from "../../utils/loanUtils";
 import { TabType } from "@/src/types/app.types";
 import { RefreshChannel } from "@/src/constants/refreshChannels";
+import { BRAND } from "@/src/config/brand";
 
 interface DashboardProps {
   currentUser: User;
@@ -161,7 +162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   Welcome back, {userName}! 👋
                 </h2>
                 <p className="text-emerald-100 text-sm mt-0.5">
-                  You have successfully logged in to SMV Holdings Micro Finance
+                  You have successfully logged in to {BRAND.name} {BRAND.tagline}
                   Portal
                 </p>
               </div>
@@ -204,10 +205,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Micro Finance Portfolio
+            {BRAND.tagline} Portfolio
           </h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            SMV Holdings — Real-time micro finance portfolio metrics, LKR
+            {BRAND.name} — Real-time micro finance portfolio metrics, LKR
             collections, and active loan balances.
           </p>
         </div>
