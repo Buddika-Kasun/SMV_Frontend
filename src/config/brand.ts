@@ -1,12 +1,12 @@
 // src/config/brand.ts
 export const BRAND = {
-  name: "SMV Holdings",
-  shortName: "SMV Finance",
-  appName: "SMV Finance",
-  legalName: "SMV HOLDINGS (PVT) LTD",
+  name: "InstaLend Global",
+  shortName: "InstaLend",
+  appName: "InstaLend",
+  legalName: "InstaLend Global (PVT) LTD",
   tagline: "Micro Finance",
   description: "Microfinance & SME Credit Division",
-  location: "Microfinance & SME Credit Division • Colombo, Sri Lanka",
+  location: "InstaLend Global (PVT) LTD • Virtual, Virtual",
   logo: "/src/assets/logo2.jpg",
   colors: {
     primary: "#2563eb", // blue-600
