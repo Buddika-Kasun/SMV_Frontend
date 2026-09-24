@@ -18,6 +18,7 @@ import {
 } from "../utils/loanUtils";
 
 import logoIcon from "@/src/assets/logo2.jpg";
+import { BRAND } from "../config/brand";
 
 interface ClearanceCertificateModalProps {
   loan: Loan;
@@ -240,14 +241,12 @@ export const ClearanceCertificateModal: React.FC<
                 {/* <Building2 className="w-4 h-4 text-blue-600" /> */}
                 <img
                   src={logoIcon}
-                  alt="SMV Holdings"
+                  alt={BRAND.name}
                   className="w-8 h-8 object-contain rounded-full"
                 />
-                <span>SMV HOLDINGS (PVT) LTD</span>
+                <span>{BRAND.legalName}</span>
               </div>
-              <p className="text-[10px] text-slate-500">
-                Microfinance & SME Credit Division • Colombo, Sri Lanka
-              </p>
+              <p className="text-[10px] text-slate-500">{BRAND.location}</p>
               <p className="text-[10px] text-slate-400 font-mono mt-1">
                 CLR-{loan.loanNumber || loan.id}
               </p>
@@ -406,7 +405,7 @@ export const ClearanceCertificateModal: React.FC<
                   Issued by:
                 </span>
                 <span className="font-medium text-slate-700">
-                  SMV Holdings — Authorized Officer
+                  {BRAND.name} — Authorized Officer
                 </span>
               </div>
               <div className="flex justify-between">
@@ -421,11 +420,15 @@ export const ClearanceCertificateModal: React.FC<
             {/* Footer note */}
             <div className="flex flex-col">
               <div className="text-center py-1 border-t border-b border-slate-200 text-[10px] text-slate-500">
-                <span>• Official SMV Holdings Microfinance Certificate</span>
+                <span>
+                  • Official {BRAND.name} {BRAND.tagline} Certificate
+                </span>
               </div>
               <div className="text-center py-2 border-b border-slate-200 text-[10px] text-slate-500 flex flex-col">
-                <span>Developed by: Axperia Information Systems</span>
-                <span>+94 788 017 808 | ask.axperia@gmail.com</span>
+                <span>Developed by: {BRAND.contact.developer}</span>
+                <span>
+                  {BRAND.contact.phone} | {BRAND.contact.email}
+                </span>
               </div>
             </div>
           </div>
