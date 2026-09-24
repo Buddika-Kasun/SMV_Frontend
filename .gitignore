@@ -7,3 +7,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# ignore branding details
+src/assets/
+src/config/brand.ts
+public/
+index.html
+metadata.json
