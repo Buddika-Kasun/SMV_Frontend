@@ -12,6 +12,7 @@ export const RefreshChannel = {
   /** Sidebar nav badge counts */
   Nav: "nav",
   Users: "users",
+  Notifications: "notifications",
 } as const;
 
 export type RefreshChannelKey =

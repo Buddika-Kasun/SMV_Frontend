@@ -19,6 +19,7 @@ import {
 import toast from "react-hot-toast";
 import { useRealtimeEvents } from "../hooks/useRealtimeEvents";
 import { useAuth } from "./AuthContext";
+import { notificationService } from "../services/notification.service";
 
 interface UIContextType {
   activeTab: TabType;
@@ -70,6 +71,13 @@ interface UIContextType {
   // ---------------------------------------------------------
   navCounts: NavigationCounts;
   navCountsLoading: boolean;
+
+  // ---------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------
+  unreadNotificationCount: number;
+  unreadNotificationLoading: boolean;
+  refreshUnreadNotifications: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -86,6 +94,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     string | null
   >(null);
   const [detailsLoanId, setDetailsLoanId] = useState<string | null>(null);
+
+    // Unread notification count
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadNotificationLoading, setUnreadNotificationLoading] =
+    useState(false);
 
   // Navigation badge counts
   const [navCounts, setNavCounts] = useState<NavigationCounts>({
@@ -140,6 +153,29 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setIsAuthenticated(Boolean(session));
   }, [location.pathname]);
 
+  const notificationChannel = refreshChannels[RefreshChannel.Notifications] ?? 0;
+
+    const refreshUnreadNotifications = useCallback(async () => {
+      if (!isAuthenticated) {
+        setUnreadNotificationCount(0);
+        return;
+      }
+      setUnreadNotificationLoading(true);
+      try {
+        const count = await notificationService.getUnreadCount();
+        setUnreadNotificationCount(count);
+      } catch {
+        setUnreadNotificationCount(0);
+      } finally {
+        setUnreadNotificationLoading(false);
+      }
+    }, [isAuthenticated]);
+
+      
+  useEffect(() => {
+    refreshUnreadNotifications();
+  }, [refreshUnreadNotifications, refreshKey, notificationChannel]);
+
   // ---------------------------------------------------------
   // Fetch navigation counts (self-managed)
   // ---------------------------------------------------------
@@ -177,6 +213,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       "/customers": "customers",
       "/users": "users",
       "/reports": "reports",
+      "/notifications": "notifications",
     };
 
     const matchedTab = tabMap[path];
@@ -277,9 +314,19 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         case "notification.created":
           // Optional toast for the notification popup
-          toast(event.payload.title ?? "New notification", { icon: "🔔" });
-          triggerRefreshChannel(RefreshChannel.Nav);
+          toast(event.payload.title ?? "New notification", {
+            icon: "🔔",
+            toasterId: "left",
+            className:
+              "!text-xs !border !border-blue-100",
+          });
+          triggerRefreshChannel(RefreshChannel.Notifications);
           break;
+
+        case "notifications.changed": {
+          triggerRefreshChannel(RefreshChannel.Notifications);
+          break;
+        }
 
         case "users.changed":
           triggerRefreshChannel(RefreshChannel.Users);
@@ -325,6 +372,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     previewDocument,
     openDocumentPreview,
     closeDocumentPreview,
+
+    // Notifications
+    unreadNotificationCount,
+    unreadNotificationLoading,
+    refreshUnreadNotifications,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

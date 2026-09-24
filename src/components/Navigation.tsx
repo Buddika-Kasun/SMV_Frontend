@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   X,
   LogOut,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import { User } from "../api";
 
@@ -24,12 +25,13 @@ import { TabType } from "../types/app.types";
 
 interface NavigationProps {
   activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
   pendingApprovalsCount: number;
   pendingKycCount: number;
   overdueCount: number;
   activeConsultancyCount?: number;
   currentUser: User;
+  unreadNotificationCount: number;
+  onTabChange: (tab: TabType) => void;
   onLogout?: () => void;
   refresh?: () => void;
 }
@@ -46,9 +48,26 @@ export const Navigation: React.FC<NavigationProps> = ({
   currentUser,
   onLogout,
   refresh,
+  unreadNotificationCount,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isOnNotifications = location.pathname === "/notifications";
+
+  const [bellRing, setBellRing] = useState(false);
+  const prevUnreadRef = useRef(unreadNotificationCount);
+
+  // Wiggle on unread count increase
+  useEffect(() => {
+    if (unreadNotificationCount > prevUnreadRef.current) {
+      setBellRing(true);
+      const t = setTimeout(() => setBellRing(false), 700);
+      prevUnreadRef.current = unreadNotificationCount;
+      return () => clearTimeout(t);
+    }
+    prevUnreadRef.current = unreadNotificationCount;
+  }, [unreadNotificationCount]);
+
   const isManagerOrAdmin =
     currentUser.role === "admin" || currentUser.role === "manager";
 
@@ -63,6 +82,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [showUninstallGuide, setShowUninstallGuide] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // const unreadNotifications = 2;
 
   const recomputeInstalledState = useCallback(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
@@ -536,6 +557,30 @@ export const Navigation: React.FC<NavigationProps> = ({
             <RefreshCw
               className={`w-4 h-4 ${isRefreshing ? "animate-[spin_0.6s_linear_infinite]" : ""}`}
             />
+          </button>
+
+          {/* Notification Bell */}
+          <button
+            onClick={() => {
+              setBellRing(true);
+              setTimeout(() => setBellRing(false), 700);
+              navigate("/notifications");
+            }}
+            title="Notifications"
+            className={`relative p-1.5 rounded-lg transition border cursor-pointer ${
+              isOnNotifications
+                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 border-transparent hover:border-slate-200"
+            }`}
+          >
+            <Bell
+              className={`w-4 h-4 ${bellRing ? "animate-bell-ring" : ""}`}
+            />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+              </span>
+            )}
           </button>
 
           <button

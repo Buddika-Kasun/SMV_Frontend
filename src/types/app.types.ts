@@ -1,5 +1,6 @@
 export type TabType =
   | "dashboard"
+  | "notifications"
   | "applications"
   | "kyc"
   | "payments"

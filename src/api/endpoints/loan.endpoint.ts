@@ -7,7 +7,6 @@ import {
   ExecuteSettlementPayload,
   PaginationParams,
   PaginatedResponse,
-  KYCData,
   KYCPayload,
   PaymentRecord,
   LoanStateCounts,

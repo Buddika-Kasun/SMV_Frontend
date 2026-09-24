@@ -191,6 +191,24 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Layout
+                activeTab={ui.activeTab}
+                openNewLoanModal={ui.openNewLoanModal}
+                openLoanDetails={ui.openLoanDetails}
+              >
+                <MainContent
+                  activeTab="notifications"
+                  setActiveTab={ui.setActiveTab}
+                />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Catch-all → role-aware default */}
         <Route path="*" element={<Navigate to={defaultRoute} replace />} />
       </Routes>

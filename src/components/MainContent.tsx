@@ -12,6 +12,7 @@ import { CustomerDirectory } from "./screens/CustomerDirectory";
 import { UserManagement } from "./screens/UserManagement";
 import { ReportsStudio } from "./screens/ReportsStudio";
 import { TabType } from "../types/app.types";
+import { NotificationCenter } from "./screens/NotificationCenter";
 
 interface MainContentProps {
   activeTab: string;
@@ -124,6 +125,9 @@ export const MainContent: React.FC<MainContentProps> = ({
           // consultancies={consultancies}
         />
       ) : null;
+
+    case "notifications":
+      return <NotificationCenter />;
 
     default:
       return null;

@@ -6,3 +6,4 @@ export * from "./payment.endpoint";
 export * from "./consultancy.endpoint";
 export * from "./report.endpoint";
 export * from "./sms.endpoint";
+export * from "./notification.endpoint";

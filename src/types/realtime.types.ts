@@ -1,6 +1,7 @@
 export type RealtimeEventType =
   | "loans.changed"
   | "notification.created"
+  | "notifications.changed"
   | "payment.recorded"
   | "stats.changed"
   | "users.changed";

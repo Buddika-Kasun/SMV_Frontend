@@ -31,6 +31,7 @@ export const Layout: React.FC<LayoutProps> = ({
     refreshKey,
     triggerRefresh,
     refreshChannels,
+    unreadNotificationCount,
   } = useUI();
 
   // If no current user, don't render
@@ -60,6 +61,7 @@ export const Layout: React.FC<LayoutProps> = ({
         currentUser={currentUser}
         onLogout={logout}
         refresh={triggerRefresh}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
@@ -71,6 +73,7 @@ export const Layout: React.FC<LayoutProps> = ({
           onLogout={logout}
           // refresh={refreshKey}
           refreshChannels={refreshChannels}
+          unreadNotificationCount={unreadNotificationCount}
         />
 
         <main className="overflow-y-auto flex flex-col flex-1">
