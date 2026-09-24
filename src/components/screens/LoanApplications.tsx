@@ -33,6 +33,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { TabType } from "@/src/types/app.types";
 import { useUI } from "@/src/contexts";
 import { RefreshChannel } from "@/src/constants/refreshChannels";
+import { BRAND } from "@/src/config/brand";
 
 // ---------------------------------------------------------
 // Skeleton Row (List View)
@@ -345,7 +346,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                   Welcome back, {userName}! 👋
                 </h2>
                 <p className="text-emerald-100 text-sm mt-0.5">
-                  You have successfully logged in to SMV Holdings Micro Finance
+                  You have successfully logged in to {BRAND.name} {BRAND.tagline}
                   Portal
                 </p>
               </div>
