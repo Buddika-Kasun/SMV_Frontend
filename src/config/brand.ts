@@ -5,8 +5,8 @@ export const BRAND = {
   appName: "SMV Finance",
   legalName: "SMV HOLDINGS (PVT) LTD",
   tagline: "Micro Finance",
-  description: "Microfinance & SME Credit Division",
-  location: "Microfinance & SME Credit Division • Colombo, Sri Lanka",
+  description: "Microfinance & SMV Credit Division",
+  location: `No: 53/7/A, Diyagama, Homagama \u00A0\u00A0|\u00A0\u00A0 + 94 11 218 1200`,
   logo: "/src/assets/logo2.jpg",
   colors: {
     primary: "#2563eb", // blue-600
@@ -17,7 +17,7 @@ export const BRAND = {
   },
   contact: {
     developer: "Axperia Information Systems",
-    phone: "+94 788 017 808",
+    phone: "+94 78 801 7808",
     email: "ask.axperia@gmail.com",
   },
   version: "v1.0.0",

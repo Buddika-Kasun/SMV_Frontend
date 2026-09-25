@@ -72,11 +72,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       <div className="max-w-md w-full space-y-6">
         {/* Branding */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center rounded-full shadow-lg shadow-blue-500/30 text-white mx-auto">
+          <div className="inline-flex items-center justify-center drop-shadow-lg drop-shadow-blue-500/30 text-white mx-auto">
             <img
               src={logoIcon}
               alt={BRAND.name}
-              className="w-14 h-14 object-contain rounded-full"
+              className="w-14 h-14 object-contain"
             />
           </div>
           <div>

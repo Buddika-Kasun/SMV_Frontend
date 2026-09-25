@@ -510,7 +510,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </span>
         </div>
         <span className="text-[9px] uppercase font-bold text-slate-400">
-          v1.0.0
+          {BRAND.version}
         </span>
       </div>
     </>
