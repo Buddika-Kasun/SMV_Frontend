@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { formatCurrency } from "../utils/consultancyUtils";
+import { formatCurrency } from "../../utils/consultancyUtils";
 import {
   Building2,
   CheckCircle,
@@ -9,10 +9,11 @@ import {
   User,
   Download,
 } from "lucide-react";
-import { Loan, PaymentRecord } from "../api";
-import { getPaymentMethodLabel } from "../utils/loanUtils";
+import { Loan, PaymentRecord } from "../../api";
+import { getPaymentMethodLabel } from "../../utils/loanUtils";
 
 import logoIcon from "@/src/assets/logo2.jpg";
+import { BRAND } from "../../config/brand";
 
 interface PaymentReceiptModalProps {
   loan: Loan;
@@ -44,7 +45,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
     try {
       const dataUrl = await toPng(receipt, {
-        pixelRatio: 4,
+        pixelRatio: 2,
         backgroundColor: "#ffffff",
         cacheBust: true,
         skipAutoScale: true,
@@ -71,8 +72,8 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
       });
 
       const pxToMm = 3.7795275591;
-      const widthMm = img.naturalWidth / 2 / pxToMm;
-      const heightMm = img.naturalHeight / 2 / pxToMm;
+      const widthMm = img.naturalWidth / 1 / pxToMm;
+      const heightMm = img.naturalHeight / 1 / pxToMm;
 
       const win = window.open("", "_blank", "width=800,height=900");
       if (!win) {
@@ -216,14 +217,12 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                 {/* <Building2 className="w-4 h-4 text-blue-600" /> */}
                 <img
                   src={logoIcon}
-                  alt="SMV Holdings"
+                  alt={BRAND.name}
                   className="w-8 h-8 object-contain rounded-full"
                 />
-                <span>SMV HOLDINGS (PVT) LTD</span>
+                <span>{BRAND.legalName}</span>
               </div>
-              <p className="text-[10px] text-slate-500">
-                Microfinance & SME Credit Division • Colombo, Sri Lanka
-              </p>
+              <p className="text-[10px] text-slate-500">{BRAND.location}</p>
             </div>
 
             {/* Core Amount Hero */}
@@ -322,11 +321,15 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
             {/* Footer note */}
             <div className="flex flex-col">
               <div className="text-center py-1 border-t border-b border-slate-200 text-[10px] text-slate-500">
-                <span>• Official SMV Holdings Microfinance Receipt</span>
+                <span>
+                  • Official {BRAND.name} {BRAND.tagline} Receipt
+                </span>
               </div>
               <div className="text-center py-2 border-b border-slate-200 text-[10px] text-slate-500 flex flex-col">
-                <span>Developed by: Axperia Information Systems</span>
-                <span>+94 788 017 808 | ask.axperia@gmail.com</span>
+                <span>Developed by: {BRAND.contact.developer}</span>
+                <span>
+                  {BRAND.contact.phone} | {BRAND.contact.email}
+                </span>
               </div>
             </div>
           </div>

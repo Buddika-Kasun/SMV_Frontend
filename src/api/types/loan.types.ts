@@ -1,7 +1,8 @@
 import { PaymentMethod, PaymentRecord } from "./payment.types";
 
 export type LoanType =
-  | "Instant_Personal"
+  | "Instant_Loan_Daily"
+  | "Instant_Loan_Monthly"
   | "Standard_Personal"
   | "Business_Expansion"
   | "Micro_Enterprise"
@@ -35,7 +36,7 @@ export type InstallmentStatus =
   | "Overdue"
   | "Partially_Paid";
 
-export type RepaymentFrequency = "Monthly" | "Bi-Weekly" | "Weekly";
+export type RepaymentFrequency = "Daily" | "Monthly" | "Bi-Weekly" | "Weekly";
 export type InterestMethod = "Flat_Rate" | "Reducing_Balance";
 
 export interface Installment {

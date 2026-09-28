@@ -8,7 +8,7 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
-import { LoanDocument } from "../api";
+import { LoanDocument } from "../../api";
 
 interface DocumentPreviewModalProps {
   document: LoanDocument | null;

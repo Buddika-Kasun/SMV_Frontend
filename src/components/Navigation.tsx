@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,20 +16,23 @@ import {
   X,
   LogOut,
   RefreshCw,
+  Bell,
 } from "lucide-react";
-import { TabType } from "../types";
 import { User } from "../api";
 
 import logoIcon from "@/src/assets/logo2.jpg";
+import { TabType } from "../types/app.types";
+import { BRAND } from "../config/brand";
 
 interface NavigationProps {
   activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
   pendingApprovalsCount: number;
   pendingKycCount: number;
   overdueCount: number;
   activeConsultancyCount?: number;
   currentUser: User;
+  unreadNotificationCount: number;
+  onTabChange: (tab: TabType) => void;
   onLogout?: () => void;
   refresh?: () => void;
 }
@@ -46,9 +49,26 @@ export const Navigation: React.FC<NavigationProps> = ({
   currentUser,
   onLogout,
   refresh,
+  unreadNotificationCount,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isOnNotifications = location.pathname === "/notifications";
+
+  const [bellRing, setBellRing] = useState(false);
+  const prevUnreadRef = useRef(unreadNotificationCount);
+
+  // Wiggle on unread count increase
+  useEffect(() => {
+    if (unreadNotificationCount > prevUnreadRef.current) {
+      setBellRing(true);
+      const t = setTimeout(() => setBellRing(false), 700);
+      prevUnreadRef.current = unreadNotificationCount;
+      return () => clearTimeout(t);
+    }
+    prevUnreadRef.current = unreadNotificationCount;
+  }, [unreadNotificationCount]);
+
   const isManagerOrAdmin =
     currentUser.role === "admin" || currentUser.role === "manager";
 
@@ -63,6 +83,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [showUninstallGuide, setShowUninstallGuide] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // const unreadNotifications = 2;
 
   const recomputeInstalledState = useCallback(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
@@ -166,48 +188,48 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     if (isAndroid) {
       return [
-        "Close the SMV Finance app",
-        "Long-press the SMV Finance icon on your home screen",
+        `Close the ${BRAND.appName} app`,
+        `Long-press the ${BRAND.appName} icon on your home screen`,
         'Tap "Uninstall" (or drag the icon to the trash)',
-        "Confirm the removal",
+        `Confirm the removal`,
       ];
     }
     if (isIOS) {
       return [
-        "Close the SMV Finance app",
-        "Long-press the SMV Finance icon on your home screen",
+        `Close the ${BRAND.appName} app`,
+        `Long-press the ${BRAND.appName} icon on your home screen`,
         'Tap "Remove App" then "Delete App"',
         "Confirm the removal",
       ];
     }
     if (isMac) {
       return [
-        "Quit the SMV Finance app (Cmd + Q)",
-        "Open Finder → Applications",
-        "Drag SMV Finance to the Trash",
-        "Or right-click the Dock icon → Options → Remove from Dock",
+        `Quit the ${BRAND.appName} app (Cmd + Q)`,
+        `Open Finder → Applications`,
+        `Drag ${BRAND.appName} to the Trash`,
+        `Or right-click the Dock icon → Options → Remove from Dock`,
       ];
     }
     if (isWindows) {
       return [
-        "Close the SMV Finance app window",
-        "Open Start Menu and search for SMV Finance",
-        "Right-click the icon → Uninstall",
-        "Or: Settings → Apps → Installed apps → SMV Finance → Uninstall",
+        `Close the ${BRAND.appName} app window`,
+        `Open Start Menu and search for ${BRAND.appName}`,
+        `Right-click the icon → Uninstall`,
+        `Or: Settings → Apps → Installed apps → ${BRAND.appName} → Uninstall`,
       ];
     }
     if (isLinux) {
       return [
-        "Close the SMV Finance app window",
-        "Open chrome://apps (or edge://apps) in your browser",
-        "Right-click the SMV Finance icon",
+        `Close the ${BRAND.appName} app window`,
+        `Open chrome://apps (or edge://apps) in your browser`,
+        `Right-click the ${BRAND.appName} icon`,
         'Choose "Remove from Chrome/Edge"',
       ];
     }
     return [
-      "Close the SMV Finance app window",
-      "Open chrome://apps (or edge://apps) in your browser",
-      "Right-click the SMV Finance icon",
+      `Close the ${BRAND.appName} app window`,
+      `Open chrome://apps (or edge://apps) in your browser`,
+      `Right-click the ${BRAND.appName} icon`,
       'Choose "Remove from Chrome/Edge"',
     ];
   })();
@@ -313,15 +335,15 @@ export const Navigation: React.FC<NavigationProps> = ({
         >
           <img
             src={logoIcon}
-            alt="SMV Holdings"
+            alt={BRAND.name}
             className="w-10 h-10 object-contain rounded-full shrink-0"
           />
           <div className="min-w-0">
             <span className="font-extrabold text-slate-900 tracking-tight text-sm block truncate">
-              SMV Holdings
+              {BRAND.name}
             </span>
             <span className="text-[10px] text-blue-600 font-semibold block truncate">
-              Micro Finance Enterprise
+              {BRAND.tagline}
             </span>
           </div>
           <button
@@ -431,13 +453,13 @@ export const Navigation: React.FC<NavigationProps> = ({
             <button
               onClick={handleInstallClick}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-1 rounded-lg shadow-xs transition cursor-pointer"
-              title="Install SMV Finance as a desktop app"
+              title={`Install ${BRAND.appName} as a desktop app`}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Install App</span>
             </button>
             <p className="text-[9px] text-slate-400 text-center mt-1.5 leading-tight">
-              Add SMV Finance to your desktop
+              Add {BRAND.appName} to your desktop
             </p>
           </div>
         )}
@@ -455,7 +477,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             <button
               onClick={handleUninstallClick}
               className="w-full flex items-center justify-center gap-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-semibold text-xs py-1 rounded-lg shadow-2xs transition cursor-pointer"
-              title="How to uninstall SMV Finance"
+              title={`How to uninstall ${BRAND.appName}`}
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Uninstall App</span>
@@ -488,7 +510,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </span>
         </div>
         <span className="text-[9px] uppercase font-bold text-slate-400">
-          v1.0.0
+          {BRAND.version}
         </span>
       </div>
     </>
@@ -509,15 +531,15 @@ export const Navigation: React.FC<NavigationProps> = ({
         >
           <img
             src={logoIcon}
-            alt="SMV Holdings"
+            alt={BRAND.name}
             className="w-8 h-8 object-contain rounded-full shrink-0"
           />
           <div className="min-w-0">
             <span className="font-extrabold text-slate-900 tracking-tight text-xs block truncate">
-              SMV Holdings
+              {BRAND.name}
             </span>
             <span className="text-[9px] text-blue-600 font-semibold block truncate">
-              Micro Finance
+              {BRAND.tagline}
             </span>
           </div>
         </div>
@@ -536,6 +558,30 @@ export const Navigation: React.FC<NavigationProps> = ({
             <RefreshCw
               className={`w-4 h-4 ${isRefreshing ? "animate-[spin_0.6s_linear_infinite]" : ""}`}
             />
+          </button>
+
+          {/* Notification Bell */}
+          <button
+            onClick={() => {
+              setBellRing(true);
+              setTimeout(() => setBellRing(false), 700);
+              navigate("/notifications");
+            }}
+            title="Notifications"
+            className={`relative p-1.5 rounded-lg transition border cursor-pointer ${
+              isOnNotifications
+                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 border-transparent hover:border-slate-200"
+            }`}
+          >
+            <Bell
+              className={`w-4 h-4 ${bellRing ? "animate-bell-ring" : ""}`}
+            />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -589,7 +635,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">
-                  Uninstall SMV Finance
+                  Uninstall {BRAND.appName}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   Browsers don't allow apps to uninstall themselves — follow

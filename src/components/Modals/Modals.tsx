@@ -1,8 +1,8 @@
 import React from "react";
 import { useUI } from "../../contexts/UIContext";
-import { LoanDetailsModal } from "../LoanDetailsModal";
-import { NewLoanModal } from "../NewLoanModal";
-import { DocumentPreviewModal } from "../DocumentPreviewModal";
+import { LoanDetailsModal } from "./LoanDetailsModal";
+import { NewLoanModal } from "./NewLoanModal";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
 
 export const Modals: React.FC = () => {
   const {

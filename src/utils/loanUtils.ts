@@ -16,7 +16,7 @@ export function generateInstallmentSchedule(
   principal: number,
   annualInterestRate: number,
   termMonths: number,
-  frequency: "Monthly" | "Bi-Weekly" | "Weekly" = "Monthly",
+  frequency: "Daily" | "Monthly" | "Bi-Weekly" | "Weekly" = "Daily",
   method: InterestMethod,
   startDateStr: string = new Date().toISOString().split("T")[0],
 ): Installment[] {
@@ -24,16 +24,39 @@ export function generateInstallmentSchedule(
   const startDate = new Date(startDateStr);
 
   let numInstallments = termMonths;
+  if (frequency === "Daily") numInstallments = termMonths * 30;
   if (frequency === "Bi-Weekly") numInstallments = termMonths * 2;
   if (frequency === "Weekly") numInstallments = termMonths * 4;
 
-  const periodicRate =
-    annualInterestRate /
-    100 /
-    (frequency === "Monthly" ? 12 : frequency === "Bi-Weekly" ? 26 : 52);
+  // -------- Periods per year, for converting annual rate to periodic --------
+  const periodsPerYear =
+    frequency === "Daily"
+      ? 365
+      : frequency === "Monthly"
+        ? 12
+        : frequency === "Bi-Weekly"
+          ? 26
+          : 52;
+
+  const periodicRate = annualInterestRate / 100 / periodsPerYear;
+
+  // -------- Date increment helper --------
+  const addPeriod = (base: Date, i: number): Date => {
+    const d = new Date(base);
+    if (frequency === "Daily") {
+      d.setDate(d.getDate() + i);
+    } else if (frequency === "Monthly") {
+      d.setMonth(d.getMonth() + i);
+    } else if (frequency === "Bi-Weekly") {
+      d.setDate(d.getDate() + i * 14);
+    } else {
+      d.setDate(d.getDate() + i * 7);
+    }
+    return d;
+  };
 
   if (method === "Reducing_Balance") {
-    // Equated Monthly Installment (EMI) formula
+    // Equated periodic installment (EMI) formula
     const emi =
       periodicRate > 0
         ? (principal *
@@ -45,21 +68,14 @@ export function generateInstallmentSchedule(
     let remainingPrincipal = principal;
 
     for (let i = 1; i <= numInstallments; i++) {
-      const dueDate = new Date(startDate);
-      if (frequency === "Monthly") {
-        dueDate.setMonth(dueDate.getMonth() + i);
-      } else if (frequency === "Bi-Weekly") {
-        dueDate.setDate(dueDate.getDate() + i * 14);
-      } else {
-        dueDate.setDate(dueDate.getDate() + i * 7);
-      }
+      const dueDate = addPeriod(startDate, i);
 
       const interestForPeriod =
         Math.round(remainingPrincipal * periodicRate * 100) / 100;
       let principalForPeriod =
         Math.round((emi - interestForPeriod) * 100) / 100;
 
-      // Adjust last installment to prevent rounding errors
+      // Last installment (or overpay) → settle the remainder
       if (i === numInstallments || principalForPeriod > remainingPrincipal) {
         principalForPeriod = Math.round(remainingPrincipal * 100) / 100;
       }
@@ -82,6 +98,8 @@ export function generateInstallmentSchedule(
     }
   } else {
     // Flat Rate
+    // Interest is calculated on the original principal for the whole term.
+    // For Daily we still use termMonths/12 as the year fraction.
     const totalInterest =
       principal * (annualInterestRate / 100) * (termMonths / 12);
     const flatInterestPerInstallment =
@@ -94,23 +112,36 @@ export function generateInstallmentSchedule(
       ) / 100;
 
     for (let i = 1; i <= numInstallments; i++) {
-      const dueDate = new Date(startDate);
-      if (frequency === "Monthly") {
-        dueDate.setMonth(dueDate.getMonth() + i);
-      } else if (frequency === "Bi-Weekly") {
-        dueDate.setDate(dueDate.getDate() + i * 14);
-      } else {
-        dueDate.setDate(dueDate.getDate() + i * 7);
-      }
+      const dueDate = addPeriod(startDate, i);
+
+      // Adjust last installment to eliminate rounding drift
+      const isLast = i === numInstallments;
+      const principalForPeriod = isLast
+        ? Math.round(
+            (principal - flatPrincipalPerInstallment * (numInstallments - 1)) *
+              100,
+          ) / 100
+        : flatPrincipalPerInstallment;
+
+      const interestForPeriod = isLast
+        ? Math.round(
+            (totalInterest -
+              flatInterestPerInstallment * (numInstallments - 1)) *
+              100,
+          ) / 100
+        : flatInterestPerInstallment;
+
+      const totalInstallmentAmount =
+        Math.round((principalForPeriod + interestForPeriod) * 100) / 100;
 
       installments.push({
         installmentNumber: i,
         dueDate: dueDate.toISOString().split("T")[0],
-        principalAmount: flatPrincipalPerInstallment,
-        interestAmount: flatInterestPerInstallment,
-        totalInstallment: flatTotal,
+        principalAmount: principalForPeriod,
+        interestAmount: interestForPeriod,
+        totalInstallment: totalInstallmentAmount,
         paidAmount: 0,
-        remainingAmount: flatTotal,
+        remainingAmount: totalInstallmentAmount,
         status: "Pending",
         lateFee: 0,
       });
@@ -558,7 +589,8 @@ export function getPaymentMethodLabel(method: string): string {
  */
 export function getLoanTypeLabel(type: string): string {
   const map: Record<string, string> = {
-    Instant_Personal: "Instant Personal",
+    Instant_Loan_Daily: "Instant Loan Daily",
+    Instant_Loan_Monthly: "Instant Loan Monthly",
     Standard_Personal: "Standard Personal",
     Business_Expansion: "Business Expansion",
     Micro_Enterprise: "Micro Enterprise",
@@ -619,6 +651,7 @@ export function toDateTimeDisplay(v?: string | null): string {
  */
 export function getRepaymentFrequencyLabel(frequency: string): string {
   const map: Record<string, string> = {
+    Daily: "Daily",
     Monthly: "Monthly",
     Bi_Weekly: "Bi-Weekly",
     Weekly: "Weekly",

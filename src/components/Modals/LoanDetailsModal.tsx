@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/consultancyUtils";
+import { formatCurrency } from "../../utils/consultancyUtils";
 import { X, FileText, Loader2, Eye } from "lucide-react";
-import { Loan, LoanDocument } from "../api";
+import { Loan, LoanDocument } from "../../api";
 import {
   getDocumentTypeLabel,
   getInstallmentStatusColor,
@@ -9,8 +9,8 @@ import {
   getInterestMethodLabel,
   getLoanStatusColor,
   getLoanStatusLabel,
-} from "../utils/loanUtils";
-import { loanService } from "../services/loan.service";
+} from "../../utils/loanUtils";
+import { loanService } from "../../services/loan.service";
 
 interface LoanDetailsModalProps {
   loanId: string;
@@ -194,7 +194,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 Interest Rate & Method
               </span>
               <span className="font-bold text-slate-800 text-xs">
-                {loan.interestRatePerAnnum}% (
+                {loan.interestRatePerAnnum / 12}% P.M. (
                 {getInterestMethodLabel(loan.interestMethod)})
               </span>
             </div>

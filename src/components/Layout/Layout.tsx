@@ -4,8 +4,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Navigation } from "../Navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { TabType } from "@/src/types";
 import { useUI } from "@/src/contexts/UIContext";
+import { TabType } from "@/src/types/app.types";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,7 +25,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // const { activeConsultancyCount } = useConsultancies();
 
-  const { navCounts, setActiveTab, refreshKey, triggerRefresh } = useUI();
+  const {
+    navCounts,
+    setActiveTab,
+    refreshKey,
+    triggerRefresh,
+    refreshChannels,
+    unreadNotificationCount,
+  } = useUI();
 
   // If no current user, don't render
   if (!currentUser) {
@@ -54,6 +61,7 @@ export const Layout: React.FC<LayoutProps> = ({
         currentUser={currentUser}
         onLogout={logout}
         refresh={triggerRefresh}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
@@ -63,7 +71,9 @@ export const Layout: React.FC<LayoutProps> = ({
           onSelectLoan={openLoanDetails}
           currentUser={currentUser}
           onLogout={logout}
-          refresh={refreshKey}
+          // refresh={refreshKey}
+          refreshChannels={refreshChannels}
+          unreadNotificationCount={unreadNotificationCount}
         />
 
         <main className="overflow-y-auto flex flex-col flex-1">

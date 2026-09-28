@@ -10,6 +10,7 @@ import { formatCurrency } from '../../utils/consultancyUtils';
 // import { getDaysRemaining } from '../utils/consultancyUtils';
 import { useResizableColumns, ColumnConfig } from '../../hooks/useResizableColumns';
 import { ResizableTh, ResizableTableContainer } from '../common/ResizableTable';
+import { BRAND } from '@/src/config/brand';
 
 interface ReportsStudioProps {
   loans: Loan[];
@@ -589,7 +590,7 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({
   // Export CSV handler
   const handleExportCSV = (reportTitle: string) => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += `SMV Holdings - ${reportTitle}\nGenerated At: ${new Date().toLocaleString()}\nCurrency: LKR\n\n`;
+    csvContent += `${BRAND.name} - ${reportTitle}\nGenerated At: ${new Date().toLocaleString()}\nCurrency: LKR\n\n`;
 
     if (reportTitle.includes('Loan Portfolio')) {
       csvContent += 'Loan ID,Account No,Customer Name,NIC,Type,Disbursed Amount (LKR),Outstanding (LKR),Total Paid (LKR),Status\n';
@@ -633,7 +634,7 @@ export const ReportsStudio: React.FC<ReportsStudioProps> = ({
                 Essential Operational & Financial Reports
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                SMV Holdings — Structured list view for micro finance portfolio audits, consultancy placements, revenue registers, and compliance logs.
+                {BRAND.name} — Structured list view for micro finance portfolio audits, consultancy placements, revenue registers, and compliance logs.
               </p>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import logoIcon from "@/src/assets/logo2.jpg";
+import { BRAND } from "@/src/config/brand";
 
 interface LoginScreenProps {
   onLoginSuccess?: (user: User) => void;
@@ -71,19 +72,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       <div className="max-w-md w-full space-y-6">
         {/* Branding */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center rounded-full shadow-lg shadow-blue-500/30 text-white mx-auto">
+          <div className="inline-flex items-center justify-center drop-shadow-lg drop-shadow-blue-500/30 text-white mx-auto">
             <img
               src={logoIcon}
-              alt="SMV Holdings"
-              className="w-14 h-14 object-contain rounded-full"
+              alt={BRAND.name}
+              className="w-14 h-14 object-contain"
             />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              SMV Holdings
+              {BRAND.name}
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Micro Finance Management Enterprise Portal
+              {BRAND.tagline} Management Enterprise Portal
             </p>
           </div>
         </div>
@@ -191,7 +192,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Footer */}
         <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-slate-400" />
-          <span>Role-Based Access Control • SMV Enterprise Secure System</span>
+          <span>Role-Based Access Control • {BRAND.shortName} Secure System</span>
         </div>
       </div>
     </div>
