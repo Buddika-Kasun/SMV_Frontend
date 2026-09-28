@@ -155,7 +155,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
       const params: any = {
         page: currentPage,
         limit: pageSize,
-        sortBy: "createdAt",
+        sortBy: "customerNumber",
         sortOrder: "desc",
       };
 
