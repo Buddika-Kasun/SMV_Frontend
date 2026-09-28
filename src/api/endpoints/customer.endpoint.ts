@@ -51,4 +51,16 @@ export const customerEndpoint = {
       { id: string; fullName: string; idNumber: string; phone: string }[]
     >("/customers/lookup", { params: { idNumber } });
   },
+
+  sendPhoneOtp: (payload: { phone: string }) =>
+    apiClient.post<{ requestId: string }>(
+      "/customers/verify-phone/send",
+      payload,
+    ),
+
+  verifyPhoneOtp: (payload: { phone: string; code: string }) =>
+    apiClient.post<{ verified: boolean }>(
+      "/customers/verify-phone/confirm",
+      payload,
+    ),
 };

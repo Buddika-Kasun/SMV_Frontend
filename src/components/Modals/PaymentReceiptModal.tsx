@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { formatCurrency } from "../utils/consultancyUtils";
+import { formatCurrency } from "../../utils/consultancyUtils";
 import {
   Building2,
   CheckCircle,
@@ -9,11 +9,11 @@ import {
   User,
   Download,
 } from "lucide-react";
-import { Loan, PaymentRecord } from "../api";
-import { getPaymentMethodLabel } from "../utils/loanUtils";
+import { Loan, PaymentRecord } from "../../api";
+import { getPaymentMethodLabel } from "../../utils/loanUtils";
 
 import logoIcon from "@/src/assets/logo2.jpg";
-import { BRAND } from "../config/brand";
+import { BRAND } from "../../config/brand";
 
 interface PaymentReceiptModalProps {
   loan: Loan;

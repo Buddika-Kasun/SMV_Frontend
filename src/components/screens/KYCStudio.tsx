@@ -34,7 +34,7 @@ import {
 import { loanService } from "../../services/loan.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
-import { DocumentPreviewModal } from "../DocumentPreviewModal";
+import { DocumentPreviewModal } from "../Modals/DocumentPreviewModal";
 import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 // ---------------------------------------------------------

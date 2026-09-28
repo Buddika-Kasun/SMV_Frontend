@@ -36,7 +36,7 @@ import {
 } from "../../utils/loanUtils";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts";
-import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
+import { ClearanceCertificateModal } from "../Modals/ClearanceCertificateModal";
 import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface EarlySettlementStudioProps {

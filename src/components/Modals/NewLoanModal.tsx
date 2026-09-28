@@ -7,26 +7,31 @@ import {
   DollarSign,
   Loader2,
   Lock,
+  ShieldCheck,
+  Phone,
+  Check,
 } from "lucide-react";
 import {
   CreateLoanPayload,
   InterestMethod,
   LoanType,
   RepaymentFrequency,
-} from "../api";
-import { generateInstallmentSchedule } from "../utils/loanUtils";
-import { formatCurrency } from "../utils/consultancyUtils";
-import { customerService } from "../services/customer.service";
-import { useDebounce } from "../hooks/useDebounce";
-import { useUI } from "../contexts/UIContext";
-import { loanService } from "../services/loan.service";
+} from "../../api";
+import { generateInstallmentSchedule } from "../../utils/loanUtils";
+import { formatCurrency } from "../../utils/consultancyUtils";
+import { customerService } from "../../services/customer.service";
+import { useDebounce } from "../../hooks/useDebounce";
+import { loanService } from "../../services/loan.service";
+import toast from "react-hot-toast";
 
 interface NewLoanModalProps {
   onClose: () => void;
   onRefresh: () => void;
 }
 
-const PROCCESSIN_FEE = 0.00;
+const PROCCESSIN_FEE = 0.0;
+const OTP_LENGTH = 4;
+const MIN_PHONE_DIGITS = 9;
 
 interface CustomerSuggestion {
   id: string;
@@ -42,17 +47,17 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [idNumber, setIdNumber] = useState("");
-  const [loanType, setLoanType] = useState<LoanType>("Instant_Personal");
+  const [loanType, setLoanType] = useState<LoanType>("Instant_Loan_Daily");
 
   const [requestedAmount, setRequestedAmount] = useState<string>("");
-  const [interestRatePerAnnum, setInterestRatePerAnnum] =
-    useState<string>("14.0");
-  const [termMonths, setTermMonths] = useState<string>("12");
+  const [interestRatePerMonth, setInterestRatePerMonth] =
+    useState<string>("10.0");
+  const [termMonths, setTermMonths] = useState<string>("1");
 
   const [repaymentFrequency, setRepaymentFrequency] =
-    useState<RepaymentFrequency>("Monthly");
+    useState<RepaymentFrequency>("Daily");
   const [interestMethod, setInterestMethod] =
-    useState<InterestMethod>("Reducing_Balance");
+    useState<InterestMethod>("Flat_Rate");
   const [purpose, setPurpose] = useState("");
 
   // -------- Lookup state --------
@@ -64,8 +69,25 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   );
   const [submitting, setSubmitting] = useState(false);
 
+  // -------- Phone OTP state --------
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+  const [showOtpBox, setShowOtpBox] = useState(false);
+  const [otp, setOtp] = useState<string[]>(
+    Array.from({ length: OTP_LENGTH }, () => ""),
+  );
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const otpWrapperRef = useRef<HTMLDivElement>(null);
   const debouncedId = useDebounce(idNumber, 300);
+
+  // -------- Helpers --------
+  const digitsOnly = (s: string) => s.replace(/\D/g, "");
+
+  const isValidPhone = (s: string) => digitsOnly(s).length >= MIN_PHONE_DIGITS;
 
   // -------- Lookup on ID change --------
   useEffect(() => {
@@ -87,7 +109,6 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 
         setSuggestions(results);
 
-        // Exact match → autofill + lock
         const exact = results.find(
           (r) => r.idNumber.toLowerCase() === q.toLowerCase(),
         );
@@ -97,7 +118,6 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
           setMatchedCustomerId(exact.id);
           setShowSuggestions(false);
         } else {
-          // Partial matches → show dropdown, don't autofill yet
           setMatchedCustomerId(null);
           setShowSuggestions(results.length > 0);
         }
@@ -117,7 +137,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     };
   }, [debouncedId]);
 
-  // -------- Click outside to close dropdown --------
+  // -------- Click outside to close suggestions & OTP --------
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -126,10 +146,17 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
       ) {
         setShowSuggestions(false);
       }
+      if (
+        otpWrapperRef.current &&
+        !otpWrapperRef.current.contains(e.target as Node)
+      ) {
+        const hasInput = otp.some((d) => d.length > 0);
+        if (!hasInput && !verifyingOtp) setShowOtpBox(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [otp, verifyingOtp]);
 
   const handlePickSuggestion = (s: CustomerSuggestion) => {
     setIdNumber(s.idNumber);
@@ -137,19 +164,165 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     setCustomerPhone(s.phone);
     setMatchedCustomerId(s.id);
     setShowSuggestions(false);
+
+    if (s.phone !== verifiedPhone) {
+      setPhoneVerified(false);
+      setVerifiedPhone(null);
+    }
   };
 
   const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIdNumber(e.target.value);
-    // If the user edits the ID after an autofill, unlock the name/phone
     if (matchedCustomerId) {
       setMatchedCustomerId(null);
     }
   };
 
+  // -------- Phone input: only digits, +, spaces, dashes --------
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const cleaned = raw.replace(/[^\d+\s-]/g, "");
+    const normalized = cleaned.startsWith("+")
+      ? "+" + cleaned.slice(1).replace(/\+/g, "")
+      : cleaned.replace(/\+/g, "");
+
+    setCustomerPhone(normalized);
+
+    if (phoneVerified || verifiedPhone) {
+      setPhoneVerified(false);
+      setVerifiedPhone(null);
+    }
+    if (showOtpBox) {
+      setShowOtpBox(false);
+      setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+    }
+  };
+
+  // -------- Open OTP box & send code --------
+  const openOtpAndSend = async (phone: string) => {
+    setShowOtpBox(true);
+    setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+    setTimeout(() => otpRefs.current[0]?.focus(), 50);
+
+    setSendingOtp(true);
+    try {
+      await customerService.sendPhoneOtp(phone);
+      toast.success(`OTP sent to ${phone}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send OTP");
+      setShowOtpBox(false);
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Click on the phone field: only open OTP if a valid number is present
+  const handlePhoneFieldClick = () => {
+    const phone = customerPhone.trim();
+
+    if (!isValidPhone(phone)) return;
+    if (phoneVerified && verifiedPhone === phone) return;
+
+    openOtpAndSend(phone);
+  };
+
+  // -------- OTP input handlers --------
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otp];
+    next[index] = digit;
+    setOtp(next);
+
+    if (digit && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+
+    if (next.every((d) => d.length === 1)) {
+      setTimeout(() => handleVerifyOtp(next.join("")), 100);
+    }
+  };
+
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "ArrowLeft" && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, OTP_LENGTH);
+    if (!pasted) return;
+
+    const next = Array.from({ length: OTP_LENGTH }, (_, i) => pasted[i] ?? "");
+    setOtp(next);
+    const lastIndex = Math.min(pasted.length, OTP_LENGTH) - 1;
+    otpRefs.current[lastIndex]?.focus();
+
+    if (pasted.length === OTP_LENGTH) {
+      setTimeout(() => handleVerifyOtp(pasted), 100);
+    }
+  };
+
+  // -------- Verify --------
+  const handleVerifyOtp = async (codeOverride?: string) => {
+    const code = (codeOverride ?? otp.join("")).trim();
+    if (code.length !== OTP_LENGTH) {
+      toast.error("Enter the 4-digit code");
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      const ok = await customerService.verifyPhoneOtp(
+        customerPhone.trim(),
+        code,
+      );
+      if (ok) {
+        setPhoneVerified(true);
+        setVerifiedPhone(customerPhone.trim());
+        setShowOtpBox(false);
+        setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+        toast.success("Phone number verified");
+      } else {
+        toast.error("Invalid OTP");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to verify OTP");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+    setSendingOtp(true);
+    try {
+      await customerService.sendPhoneOtp(customerPhone.trim());
+      toast.success("OTP resent");
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to resend OTP");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   // -------- Preview calculations --------
   const numericAmount = parseFloat(requestedAmount) || 0;
-  const numericRate = parseFloat(interestRatePerAnnum) || 0;
+  const monthlyRate = parseFloat(interestRatePerMonth) || 0;
+  const numericRate = monthlyRate * 12;
   const numericTerm = parseInt(termMonths) || 1;
 
   const previewSchedule = generateInstallmentSchedule(
@@ -170,9 +343,13 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Guard — prevents double submit from rapid clicks or Enter key
     if (submitting) return;
     if (!customerName || numericAmount <= 0) return;
+
+    if (!phoneVerified || verifiedPhone !== customerPhone.trim()) {
+      toast.error("Please verify the phone number before submitting");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -194,11 +371,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
       };
 
       await loanService.createLoan(newLoan);
-
-      // onRefresh();
       onClose();
     } catch (err) {
-      // Error already toasted inside loanService; keep the modal open
       console.error("Loan create failed:", err);
     } finally {
       setSubmitting(false);
@@ -206,6 +380,10 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   };
 
   const isAutofilled = Boolean(matchedCustomerId);
+  const phoneOk = phoneVerified && verifiedPhone === customerPhone.trim();
+  const phoneDigits = digitsOnly(customerPhone).length;
+  const showPhoneHint =
+    !phoneOk && phoneDigits > 0 && phoneDigits < MIN_PHONE_DIGITS;
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 overflow-y-auto">
@@ -264,7 +442,6 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                       )}
                     </div>
 
-                    {/* Suggestions dropdown */}
                     {showSuggestions && suggestions.length > 0 && (
                       <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
                         <div className="px-2.5 py-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 border-b border-slate-100 sticky top-0">
@@ -309,32 +486,162 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                     />
                   </div>
 
-                  <div>
-                    <label className="text-slate-600 font-medium block mb-1 text-[10px]">
-                      Phone Number
+                  {/* Phone with OTP verification */}
+                  <div ref={otpWrapperRef} className="relative">
+                    <label className="text-slate-600 font-medium block mb-1 text-[10px] flex items-center justify-between">
+                      <span>Phone Number</span>
+                      {phoneOk && (
+                        <span className="text-emerald-600 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase">
+                          <ShieldCheck className="w-3 h-3" />
+                          Verified
+                        </span>
+                      )}
                     </label>
-                    <input
-                      type="text"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
-                      disabled={isAutofilled}
-                      className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="tel"
+                        value={customerPhone}
+                        onChange={handlePhoneChange}
+                        onClick={handlePhoneFieldClick}
+                        placeholder="+94 7X XXX XXXX"
+                        disabled={isAutofilled && phoneOk}
+                        className={`w-full bg-white text-slate-800 py-1.5 px-2.5 pr-16 rounded-lg border text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed ${
+                          phoneOk
+                            ? "border-emerald-400 bg-emerald-50/30"
+                            : "border-slate-200/80"
+                        }`}
+                        required
+                      />
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {sendingOtp && (
+                          <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                        )}
+                        {phoneOk && (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                        {!phoneOk &&
+                          !sendingOtp &&
+                          isValidPhone(customerPhone) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const phone = customerPhone.trim();
+                                if (!isValidPhone(phone)) {
+                                  toast.error(
+                                    "Enter a valid phone number first",
+                                  );
+                                  return;
+                                }
+                                openOtpAndSend(phone);
+                              }}
+                              className="text-[9px] font-bold uppercase text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 transition cursor-pointer"
+                              title="Verify this phone number"
+                            >
+                              Verify
+                            </button>
+                          )}
+                      </div>
+                    </div>
+
+                    {showPhoneHint && (
+                      <p className="text-[9px] text-slate-400 mt-0.5">
+                        {MIN_PHONE_DIGITS - phoneDigits} more minimum digit
+                        {MIN_PHONE_DIGITS - phoneDigits === 1 ? "" : "s"} needed
+                      </p>
+                    )}
+
+                    {/* OTP Box */}
+                    {showOtpBox && !phoneOk && (
+                      <div className="absolute z-40 top-full right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-3 w-72 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-700">
+                            <Phone className="w-3 h-3 text-blue-600" />
+                            Enter 4-digit code
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowOtpBox(false);
+                              setOtp(
+                                Array.from({ length: OTP_LENGTH }, () => ""),
+                              );
+                            }}
+                            className="p-0.5 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <p className="text-[10px] text-slate-500 mb-2">
+                          Sent to{" "}
+                          <span className="font-mono font-semibold text-slate-700">
+                            {customerPhone}
+                          </span>
+                        </p>
+
+                        <div className="flex items-center justify-center gap-2 mb-3">
+                          {otp.map((digit, i) => (
+                            <input
+                              key={i}
+                              ref={(el) => {
+                                otpRefs.current[i] = el;
+                              }}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) =>
+                                handleOtpChange(i, e.target.value)
+                              }
+                              onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                              onPaste={handleOtpPaste}
+                              disabled={verifyingOtp}
+                              className="w-10 h-11 text-center text-lg font-bold font-mono bg-white text-slate-900 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 disabled:opacity-50 transition"
+                            />
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyOtp()}
+                            disabled={verifyingOtp || otp.some((d) => !d)}
+                            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium text-xs py-1.5 rounded-lg transition cursor-pointer"
+                          >
+                            {verifyingOtp ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                            )}
+                            <span>
+                              {verifyingOtp ? "Verifying…" : "Verify"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={sendingOtp}
+                            className="text-[10px] text-slate-500 hover:text-blue-600 font-medium px-2 py-1.5 rounded transition disabled:opacity-50 cursor-pointer"
+                          >
+                            Resend
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {isAutofilled && (
                   <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-1 mt-2 inline-flex items-center gap-1">
                     <Lock className="w-3 h-3" />
-                    Existing customer matched — name and phone auto-filled and
-                    locked.
+                    Existing customer matched — name auto-filled. Verify phone
+                    to continue.
                   </p>
                 )}
               </div>
 
-              {/* Loan Contract Configuration (unchanged) */}
+              {/* Loan Contract Configuration */}
               <div>
                 <h4 className="font-semibold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 text-[10px]">
                   <DollarSign className="w-3.5 h-3.5 text-blue-600" />
@@ -350,8 +657,11 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                       onChange={(e) => setLoanType(e.target.value as LoanType)}
                       className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                     >
-                      <option value="Instant_Personal">
-                        Instant Personal Loan
+                      <option value="Instant_Loan_Daily">
+                        Instant Loan Daily
+                      </option>
+                      <option value="Instant_Loan_Monthly">
+                        Instant Loan Monthly
                       </option>
                       <option value="Emergency_Quick">
                         Emergency Quick Loan
@@ -382,13 +692,13 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 
                   <div>
                     <label className="text-slate-600 font-medium block mb-1 text-[10px]">
-                      Interest Rate (% P.A.)
+                      Interest Rate (% P.M.)
                     </label>
                     <input
                       type="number"
                       step="0.1"
-                      value={interestRatePerAnnum}
-                      onChange={(e) => setInterestRatePerAnnum(e.target.value)}
+                      value={interestRatePerMonth}
+                      onChange={(e) => setInterestRatePerMonth(e.target.value)}
                       className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                       required
                     />
@@ -420,6 +730,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                       }
                       className="w-full bg-white text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
                     >
+                      <option value="Daily">Daily</option>
                       <option value="Monthly">Monthly</option>
                       <option value="Bi-Weekly">Bi-Weekly</option>
                       <option value="Weekly">Weekly</option>
@@ -507,7 +818,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !phoneOk}
+                title={!phoneOk ? "Verify the phone number first" : ""}
                 className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-xs text-xs transition cursor-pointer inline-flex items-center gap-1.5"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

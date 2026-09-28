@@ -5,7 +5,7 @@ import {
   ColumnConfig,
 } from "../../hooks/useResizableColumns";
 import { ResizableTh, ResizableTableContainer } from "../common/ResizableTable";
-import { PaymentReceiptModal } from "../PaymentReceiptModal";
+import { PaymentReceiptModal } from "../Modals/PaymentReceiptModal";
 import { Pagination } from "../common/Pagination";
 import { ConfirmModal } from "../common/ConfirmModal";
 import {
@@ -37,7 +37,7 @@ import {
 } from "../../utils/loanUtils";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts";
-import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
+import { ClearanceCertificateModal } from "../Modals/ClearanceCertificateModal";
 import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface PaymentStudioProps {
