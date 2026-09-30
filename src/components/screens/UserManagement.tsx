@@ -315,9 +315,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleConfirmPasswordReset = async () => {
     if (!selectedUser || !resetPasswordValue) return;
 
-    const res = await userService.updateUser(selectedUser.id, {
-      password: resetPasswordValue,
-    });
+    const res = await userService.updateUser(
+      selectedUser.id,
+      {},
+      resetPasswordValue,
+    );
 
     setIsPasswordChangeConfirmOpen(false);
 
