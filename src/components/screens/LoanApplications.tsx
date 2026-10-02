@@ -627,7 +627,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                               {loan.termMonths} Mo.
                             </span>
                             <span className="text-[10px] text-slate-500 font-mono block">
-                              {loan.interestRatePerAnnum}% p.a.
+                              {loan.interestRatePerAnnum/12}% p.m.
                             </span>
                           </td>
 
@@ -819,7 +819,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                           <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>Interest:</span>
                             <span className="text-slate-800 font-medium">
-                              {loan.interestRatePerAnnum}% (
+                              {loan.interestRatePerAnnum/12}% (
                               {getInterestMethodLabel(loan.interestMethod)})
                             </span>
                           </div>
@@ -956,7 +956,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                 },
                 {
                   label: "Loan Term & Rate",
-                  value: `${loanToApprove.termMonths} Mo. @ ${loanToApprove.interestRatePerAnnum}% p.a.`,
+                  value: `${loanToApprove.termMonths} Mo. @ ${loanToApprove.interestRatePerAnnum/12}% p.m.`,
                 },
               ]
             : []
