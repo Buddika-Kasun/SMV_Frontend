@@ -117,6 +117,9 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
           setCustomerPhone(exact.phone);
           setMatchedCustomerId(exact.id);
           setShowSuggestions(false);
+          // Existing customer → skip OTP verification
+          setPhoneVerified(true);
+          setVerifiedPhone(exact.phone);
         } else {
           setMatchedCustomerId(null);
           setShowSuggestions(results.length > 0);
@@ -164,11 +167,9 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     setCustomerPhone(s.phone);
     setMatchedCustomerId(s.id);
     setShowSuggestions(false);
-
-    if (s.phone !== verifiedPhone) {
-      setPhoneVerified(false);
-      setVerifiedPhone(null);
-    }
+    // Existing customer → skip OTP verification
+    setPhoneVerified(true);
+    setVerifiedPhone(s.phone);
   };
 
   const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,11 +219,10 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
 
   // Click on the phone field: only open OTP if a valid number is present
   const handlePhoneFieldClick = () => {
+    if (isAutofilled) return; // existing customer → no OTP
     const phone = customerPhone.trim();
-
     if (!isValidPhone(phone)) return;
     if (phoneVerified && verifiedPhone === phone) return;
-
     openOtpAndSend(phone);
   };
 
@@ -346,7 +346,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
     if (submitting) return;
     if (!customerName || numericAmount <= 0) return;
 
-    if (!phoneVerified || verifiedPhone !== customerPhone.trim()) {
+    if (!phoneOk) {
       toast.error("Please verify the phone number before submitting");
       return;
     }
@@ -380,7 +380,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
   };
 
   const isAutofilled = Boolean(matchedCustomerId);
-  const phoneOk = phoneVerified && verifiedPhone === customerPhone.trim();
+  const phoneOk =
+    isAutofilled || (phoneVerified && verifiedPhone === customerPhone.trim());
   const phoneDigits = digitsOnly(customerPhone).length;
   const showPhoneHint =
     !phoneOk && phoneDigits > 0 && phoneDigits < MIN_PHONE_DIGITS;
@@ -493,7 +494,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                       {phoneOk && (
                         <span className="text-emerald-600 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase">
                           <ShieldCheck className="w-3 h-3" />
-                          Verified
+                          {isAutofilled ? "Registered" : "Verified"}
                         </span>
                       )}
                     </label>
@@ -505,7 +506,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                         onChange={handlePhoneChange}
                         onClick={handlePhoneFieldClick}
                         placeholder="+94 7X XXX XXXX"
-                        disabled={isAutofilled && phoneOk}
+                        disabled={isAutofilled}
                         className={`w-full bg-white text-slate-800 py-1.5 px-2.5 pr-16 rounded-lg border text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed ${
                           phoneOk
                             ? "border-emerald-400 bg-emerald-50/30"
@@ -520,7 +521,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                         {phoneOk && (
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
                         )}
-                        {!phoneOk &&
+                        {!isAutofilled &&
+                          !phoneOk &&
                           !sendingOtp &&
                           isValidPhone(customerPhone) && (
                             <button
@@ -552,7 +554,7 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                     )}
 
                     {/* OTP Box */}
-                    {showOtpBox && !phoneOk && (
+                    {showOtpBox && !phoneOk && !isAutofilled && (
                       <div className="absolute z-40 top-full right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-3 w-72 animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-700">
@@ -635,8 +637,8 @@ export const NewLoanModal: React.FC<NewLoanModalProps> = ({
                 {isAutofilled && (
                   <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-md px-2 py-1 mt-2 inline-flex items-center gap-1">
                     <Lock className="w-3 h-3" />
-                    Existing customer matched — name auto-filled. Verify phone
-                    to continue.
+                    Existing customer matched — profile auto-filled. Phone
+                    verification not required.
                   </p>
                 )}
               </div>
