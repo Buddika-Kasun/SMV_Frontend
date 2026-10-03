@@ -232,6 +232,7 @@ export class LoanService {
     receivedBy: string,
     notes: string,
     settlementDate: string,
+    reductionAmount: number,
   ): Promise<Loan> {
     try {
       const payload = {
@@ -242,6 +243,7 @@ export class LoanService {
         receivedBy,
         notes,
         settlementDate,
+        reductionAmount,
       };
 
       const response = await loanEndpoint.earlySettle(payload);
