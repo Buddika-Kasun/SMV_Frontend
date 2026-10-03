@@ -42,6 +42,8 @@ import { RefreshChannel } from "@/src/constants/refreshChannels";
 interface EarlySettlementStudioProps {
   initialLoanId?: string | null;
   onOpenLoanDetails: (loanId: string) => void;
+  // onRefresh: () => void;
+  // refresh: number;
   refreshChannels: Record<string, number>;
 }
 
@@ -50,7 +52,8 @@ const EARLY_SETTLEMENT_COLUMNS: ColumnConfig[] = [
   { id: "borrower", defaultWidth: 180, minWidth: 130 },
   { id: "nic", defaultWidth: 140, minWidth: 100 },
   { id: "disbursed", defaultWidth: 140, minWidth: 100 },
-  { id: "unpaid", defaultWidth: 160, minWidth: 120 },
+  { id: "outstanding", defaultWidth: 150, minWidth: 110 },
+  { id: "interestMethod", defaultWidth: 140, minWidth: 100 },
   { id: "status", defaultWidth: 110, minWidth: 85 },
   { id: "action", defaultWidth: 100, minWidth: 75 },
 ];
@@ -82,6 +85,11 @@ const QueueSkeletonRow: React.FC = () => (
     </td>
     <td className="p-2.5">
       <div className="h-3 w-24 bg-slate-200 rounded ml-auto" />
+    </td>
+    <td className="p-2.5">
+      <div className="flex justify-center">
+        <div className="h-3 w-20 bg-slate-200 rounded" />
+      </div>
     </td>
     <td className="p-2.5">
       <div className="flex justify-center">
@@ -123,7 +131,7 @@ const SkeletonText: React.FC<{ className?: string }> = ({ className = "" }) => (
 
 const QuoteBreakdownSkeleton: React.FC = () => (
   <div className="space-y-2.5 animate-pulse">
-    {Array.from({ length: 2 }).map((_, i) => (
+    {Array.from({ length: 4 }).map((_, i) => (
       <div
         key={i}
         className="bg-slate-50/60 p-3 rounded-lg border border-slate-100 flex items-center justify-between"
@@ -135,6 +143,13 @@ const QuoteBreakdownSkeleton: React.FC = () => (
         <div className="h-3.5 w-24 bg-slate-200 rounded" />
       </div>
     ))}
+    <div className="bg-emerald-50/40 p-3.5 rounded-lg border border-emerald-100 flex items-center justify-between">
+      <div className="space-y-1.5">
+        <div className="h-3 w-44 bg-emerald-200/70 rounded" />
+        <div className="h-2.5 w-40 bg-emerald-200/50 rounded" />
+      </div>
+      <div className="h-4 w-24 bg-emerald-200/70 rounded" />
+    </div>
     <div className="bg-slate-900 p-4 rounded-xl">
       <div className="h-3 w-32 bg-slate-700 rounded mb-2" />
       <div className="h-6 w-40 bg-slate-700 rounded" />
@@ -155,25 +170,14 @@ const AuthFormSkeleton: React.FC = () => (
 );
 
 /**
- * Compute unpaid total (principal + interest) for a loan.
- * Uses installment remaining amounts when available, otherwise
- * falls back to the loan's outstanding balance.
- */
-const computeUnpaidTotal = (loan: Loan): number => {
-  if (loan.installments && loan.installments.length > 0) {
-    return loan.installments
-      .filter((i) => i.status !== "Paid")
-      .reduce((sum, i) => sum + (i.remainingAmount || 0), 0);
-  }
-  return loan.outstandingBalance || 0;
-};
-
-/**
  * Early Settlement & Payoff Calculator Studio
+ * Self-fetching, matches PaymentStudio layout & behavior.
  */
 export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
+  // onRefresh,
+  // refresh,
   refreshChannels,
 }) => {
   const { currentUser } = useAuth();
@@ -211,9 +215,6 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
     "Full early settlement requested by customer.",
   );
 
-  // -------- Reduction amount (manual entry) --------
-  const [reductionAmount, setReductionAmount] = useState<string>("");
-
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [showClearanceCertificate, setShowClearanceCertificate] =
@@ -226,10 +227,10 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   const pageSize = queueViewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
   const refreshChannel =
-    refreshChannels[RefreshChannel.Loans] ??
-    refreshChannels[RefreshChannel.Payments] ??
-    refreshChannels[RefreshChannel.Settlements] ??
-    0;
+      refreshChannels[RefreshChannel.Loans] ??
+      refreshChannels[RefreshChannel.Payments] ??
+      refreshChannels[RefreshChannel.Settlements] ??
+      0;
 
   const {
     columnWidths,
@@ -241,7 +242,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   } = useResizableColumns(EARLY_SETTLEMENT_COLUMNS, "early_settlement_queue");
 
   // ---------------------------------------------------------
-  // Fetch queue loans
+  // Fetch queue loans (Active + Overdue eligible for settlement)
   // ---------------------------------------------------------
   const fetchQueueLoans = useCallback(async () => {
     setQueueLoading(true);
@@ -319,7 +320,6 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
         setReferenceNumber(
           `STL-${Math.floor(100000 + Math.random() * 900000)}`,
         );
-        setReductionAmount("");
       } catch (error) {
         console.error("Failed to fetch loan:", error);
         setCurrentLoan(null);
@@ -347,14 +347,6 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
   const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentLoan || isAlreadySettled) return;
-    if (numericReduction < 0) {
-      toast.error("Reduction amount cannot be negative");
-      return;
-    }
-    if (numericReduction > baseSettlementAmount) {
-      toast.error("Reduction cannot exceed the total unpaid amount");
-      return;
-    }
     setIsConfirmModalOpen(true);
   };
 
@@ -371,11 +363,16 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
         receivedById!,
         notes,
         settlementDate,
-        numericReduction,
       );
 
       setIsConfirmModalOpen(false);
       setShowClearanceCertificate(true);
+
+      // onRefresh();
+
+      // await fetchCurrentLoan(currentLoan.id);
+      // await fetchQueueLoans();
+      // await fetchDropdownLoans();
     } catch (error: any) {
       console.error("Settlement failed:", error);
       toast.error(error?.message || "Failed to execute early settlement");
@@ -407,25 +404,15 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       ?.filter((i) => i.status === "Paid")
       .reduce((sum, i) => sum + (i.paidAmount || 0), 0) || 0;
 
-  const totalRemainingAmount = currentLoan
-    ? computeUnpaidTotal(currentLoan)
-    : 0;
+  const totalRemainingAmount =
+    currentLoan?.installments
+      ?.filter((i) => i.status !== "Paid")
+      .reduce((sum, i) => sum + (i.remainingAmount || 0), 0) || 0;
 
   const progressPercent =
     totalInstallments > 0
       ? Math.round((paidInstallments / totalInstallments) * 100)
       : 0;
-
-  // -------- Reduction math --------
-  const numericReduction = Math.max(0, parseFloat(reductionAmount) || 0);
-
-  // Base payoff uses the loan's total unpaid (principal + interest).
-  // No penalty applied.
-  const baseSettlementAmount = totalRemainingAmount;
-  const totalSettlementWithReduction = Math.max(
-    0,
-    baseSettlementAmount - numericReduction,
-  );
 
   // ---------------------------------------------------------
   // Render
@@ -442,8 +429,8 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             Early Settlement & Payoff Calculator
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Calculate outstanding payoff, apply reductions, and issue loan
-            clearance certification.
+            Accrued interest calculations, unearned interest rebates, payoff
+            penalties, and loan clearance certification.
           </p>
         </div>
 
@@ -575,7 +562,8 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                       <th className="p-2.5">Loan ID</th>
                       <th className="p-2.5">Borrower</th>
                       <th className="p-2.5 text-right">Disbursed</th>
-                      <th className="p-2.5 text-right">Total Unpaid (P + I)</th>
+                      <th className="p-2.5 text-right">Balance</th>
+                      <th className="p-2.5 text-center">Interest Method</th>
                       <th className="p-2.5 text-center">Status</th>
                       <th className="p-2.5 text-center">Action</th>
                     </tr>
@@ -594,7 +582,12 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                 ))}
               </div>
             )
-          ) : queueViewMode === "list" ? (
+          ) : // : queueLoans.length === 0 ? (
+          //   <p className="text-xs text-slate-400 text-center py-6">
+          //     No loans found for this status.
+          //   </p>
+          // )
+          queueViewMode === "list" ? (
             <div className="overflow-x-auto border border-slate-100 rounded-lg">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200/60">
@@ -602,7 +595,8 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                     <th className="p-2.5">Loan ID</th>
                     <th className="p-2.5">Borrower</th>
                     <th className="p-2.5 text-right">Disbursed</th>
-                    <th className="p-2.5 text-right">Total Unpaid (P + I)</th>
+                    <th className="p-2.5 text-right">Balance</th>
+                    <th className="p-2.5 text-center">Interest Method</th>
                     <th className="p-2.5 text-center">Status</th>
                     <th className="p-2.5 text-center">Action</th>
                   </tr>
@@ -611,7 +605,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                   {queueLoans.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="py-4 text-center text-xs text-slate-400"
                       >
                         No loans found for this status.
@@ -620,7 +614,6 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                   ) : (
                     queueLoans.map((l) => {
                       const isSelected = l.id === selectedLoanId;
-                      const unpaid = computeUnpaidTotal(l);
 
                       return (
                         <tr
@@ -647,7 +640,10 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                             {formatCurrency(l.account?.disbursedAmount || 0)}
                           </td>
                           <td className="p-2.5 text-right font-extrabold text-blue-900">
-                            {formatCurrency(unpaid)}
+                            {formatCurrency(l.outstandingBalance)}
+                          </td>
+                          <td className="p-2.5 text-center font-mono text-[11px] text-slate-600">
+                            {getInterestMethodLabel(l.interestMethod)}
                           </td>
                           <td className="p-2.5 text-center">
                             <span
@@ -687,7 +683,6 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               ) : (
                 queueLoans.map((l) => {
                   const isSelected = l.id === selectedLoanId;
-                  const unpaid = computeUnpaidTotal(l);
 
                   return (
                     <div
@@ -715,21 +710,11 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                       <p className="text-[10px] text-slate-500 font-mono">
                         ID: {l.customer?.idNumber}
                       </p>
-                      <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-500">Disbursed:</span>
-                          <span className="font-semibold text-slate-700">
-                            {formatCurrency(l.account?.disbursedAmount || 0)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-500">
-                            Unpaid (P + I):
-                          </span>
-                          <span className="font-bold text-blue-900">
-                            {formatCurrency(unpaid)}
-                          </span>
-                        </div>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500">Unpaid:</span>
+                        <span className="font-bold text-blue-900">
+                          {formatCurrency(l.outstandingBalance)}
+                        </span>
                       </div>
                     </div>
                   );
@@ -785,6 +770,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
           </div>
         </div>
       ) : loanLoading ? (
+        /* Loading state — show both columns skeleton */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -828,7 +814,9 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
           </div>
         </div>
       ) : isAlreadySettled ? (
+        /* SETTLED STATE — full-width proper message, no left column */
         <div className="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+          {/* Header strip */}
           <div className="bg-linear-to-r from-emerald-50 to-emerald-50/40 border-b border-emerald-100 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
@@ -849,6 +837,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
             </div>
           </div>
 
+          {/* Loan + Customer Info */}
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100">
@@ -888,6 +877,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               </div>
             </div>
 
+            {/* Financial summary */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100">
                 <span className="text-[10px] text-slate-500 block">
@@ -919,6 +909,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               </div>
             </div>
 
+            {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
               <p className="text-[11px] text-slate-500 text-center sm:text-left">
                 All obligations on this contract have been fully cleared. A
@@ -935,10 +926,12 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
           </div>
         </div>
       ) : (
+        /* NORMAL STATE — calculation + form */
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: Calculation Breakdown + Reduction Input */}
+            {/* Left Column: Calculation Breakdown */}
             <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl p-5 shadow-2xs space-y-5">
+              {/* Header */}
               <div className="flex items-center justify-between pb-0 border-b border-slate-100">
                 <div className="w-full">
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
@@ -1030,7 +1023,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                     </div>
                     <div className="bg-white p-2.5 rounded border border-amber-200/60">
                       <span className="text-slate-500 block mb-0.5">
-                        Total Unpaid (Principal + Interest)
+                        Remaining Amount
                       </span>
                       <span className="font-bold text-amber-700 text-xs font-mono">
                         {formatCurrency(totalRemainingAmount)}
@@ -1047,27 +1040,89 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                 </div>
               )}
 
-              {/* Quote Breakdown — Total Unpaid + Reduction only */}
+              {/* Quote Breakdown */}
               {!quote ? (
                 <QuoteBreakdownSkeleton />
               ) : (
                 <div className="space-y-2.5">
-                  {/* Total Unpaid (Principal + Interest) */}
+                  {/* Original Disbursed */}
                   <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-medium text-slate-800 block">
-                        Total Unpaid (Principal + Interest)
+                        Original Disbursed Amount
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Remaining amount owed on this contract
+                        Initial loan principal
                       </span>
                     </div>
-                    <span className="font-bold text-slate-900 text-sm">
-                      {formatCurrency(totalRemainingAmount)}
+                    <span className="font-semibold text-slate-900 text-xs">
+                      {formatCurrency(quote.originalPrincipal)}
                     </span>
                   </div>
 
-                  {/* Final Payoff (before reduction) */}
+                  {/* Outstanding Principal */}
+                  <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-slate-800 block">
+                        Unpaid Principal Balance
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Remaining principal balance
+                      </span>
+                    </div>
+                    <span className="font-bold text-slate-900 text-xs">
+                      {formatCurrency(quote.outstandingPrincipalBalance)}
+                    </span>
+                  </div>
+
+                  {/* Accrued Interest */}
+                  <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-slate-800 block">
+                        Accrued Interest
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Interest earned to date
+                      </span>
+                    </div>
+                    <span className="font-medium text-slate-800 text-xs">
+                      + {formatCurrency(quote.accruedInterestToDate)}
+                    </span>
+                  </div>
+
+                  {/* Penalty */}
+                  <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-slate-800 block">
+                        Early Settlement Penalty (
+                        {quote.earlySettlementPenaltyPercent}%)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Early payoff administrative fee
+                      </span>
+                    </div>
+                    <span className="font-medium text-slate-800 text-xs">
+                      + {formatCurrency(quote.earlySettlementPenaltyFee)}
+                    </span>
+                  </div>
+
+                  {/* Waived Future Interest */}
+                  <div className="bg-emerald-50/60 p-3.5 rounded-lg border border-emerald-100 flex items-center justify-between text-xs">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-emerald-800 font-semibold">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Unearned Future Interest Waived</span>
+                      </div>
+                      <span className="text-[11px] text-emerald-700/80 mt-0.5 block">
+                        Future interest is waived for early closure.
+                      </span>
+                    </div>
+                    <span className="font-bold text-emerald-700 text-sm">
+                      - {formatCurrency(quote.unearnedFutureInterestWaived)}
+                    </span>
+                  </div>
+
+                  {/* Final Total */}
                   <div className="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                     <div>
                       <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider block">
@@ -1079,67 +1134,13 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-bold block tracking-tight">
-                        {formatCurrency(baseSettlementAmount)}
+                        {formatCurrency(quote.totalSettlementAmount)}
+                      </span>
+                      <span className="text-xs text-emerald-400 font-medium block">
+                        Customer saves{" "}
+                        {formatCurrency(quote.totalSavingsForCustomer)}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Reduction Input */}
-                  <div className="bg-blue-50/50 p-3.5 rounded-lg border border-blue-100 space-y-2">
-                    <div className="flex items-center gap-1.5 text-blue-800 font-semibold text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Manual Reduction</span>
-                    </div>
-                    <p className="text-[10px] text-blue-700/80">
-                      Enter an optional reduction amount to be subtracted from
-                      the payoff.
-                    </p>
-                    <input
-                      type="number"
-                      // min="0"
-                      step="0.01"
-                      value={reductionAmount}
-                      onChange={(e) =>
-                        setReductionAmount(e.target.value)
-                      }
-                      placeholder="0"
-                      className="w-full bg-white text-slate-900 font-bold text-sm py-2 px-3 rounded-lg border border-blue-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
-                    />
-
-                    {numericReduction > 0 && (
-                      <>
-                        <div className="flex items-center justify-between text-xs pt-2 border-t border-blue-200/60">
-                          <span className="text-slate-600">
-                            Base Payoff Amount
-                          </span>
-                          <span className="font-semibold text-slate-800 font-mono">
-                            {formatCurrency(baseSettlementAmount)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-blue-700">
-                            Reduction Applied
-                          </span>
-                          <span className="font-bold text-blue-700 font-mono">
-                            - {formatCurrency(numericReduction)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs pt-2 border-t border-blue-200/60">
-                          <span className="text-slate-900 font-bold">
-                            Net Payoff Amount
-                          </span>
-                          <span className="font-extrabold text-emerald-700 text-sm font-mono">
-                            {formatCurrency(totalSettlementWithReduction)}
-                          </span>
-                        </div>
-                      </>
-                    )}
-
-                    {numericReduction > baseSettlementAmount && (
-                      <p className="text-[10px] text-rose-600 font-medium">
-                        Reduction exceeds the payoff amount.
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
@@ -1246,12 +1247,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
 
                   <button
                     type="submit"
-                    disabled={
-                      loanLoading ||
-                      !currentLoan ||
-                      posting ||
-                      numericReduction > baseSettlementAmount
-                    }
+                    disabled={loanLoading || !currentLoan || posting}
                     className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 px-3 rounded-lg text-xs transition shadow-2xs flex items-center justify-center gap-1.5 mt-2 cursor-pointer"
                   >
                     {posting ? (
@@ -1277,7 +1273,7 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
           onClose={() => setIsConfirmModalOpen(false)}
           onConfirm={handleConfirmSettlement}
           title="Authorize Early Loan Payoff"
-          description="Are you sure you want to execute early settlement for this contract? The entire outstanding balance will be marked as fully settled and an official clearance certificate will be issued."
+          description="Are you sure you want to execute early settlement for this contract? The entire outstanding balance will be marked as fully settled, all future interest will be waived, and an official clearance certificate will be issued."
           confirmLabel="Authorize Early Settlement"
           cancelLabel="Review Calculation"
           variant="warning"
@@ -1289,20 +1285,12 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               value: currentLoan.loanNumber || currentLoan.id,
             },
             {
-              label: "Total Unpaid (P + I)",
-              value: formatCurrency(totalRemainingAmount),
-            },
-            ...(numericReduction > 0
-              ? [
-                  {
-                    label: "Manual Reduction",
-                    value: `- ${formatCurrency(numericReduction)}`,
-                  },
-                ]
-              : []),
-            {
               label: "Total Payoff Due",
-              value: formatCurrency(totalSettlementWithReduction),
+              value: formatCurrency(quote.totalSettlementAmount),
+            },
+            {
+              label: "Waived Interest Savings",
+              value: formatCurrency(quote.totalSavingsForCustomer),
             },
             { label: "Settlement Date", value: settlementDate },
             {
