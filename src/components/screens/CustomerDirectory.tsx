@@ -17,9 +17,11 @@ import { CustomerData } from "../../api";
 import { customerService } from "../../services/customer.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface CustomerDirectoryProps {
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
   onSelectLoan: (loanId: string) => void;
 }
 
@@ -106,7 +108,8 @@ const GRID_PAGE_SIZE = 9;
 type KycFilter = "All" | "Verified" | "Pending";
 
 export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
-  refresh,
+  // refresh,
+  refreshChannels,
   onSelectLoan,
 }) => {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
@@ -127,6 +130,12 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
   const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const refreshChannel =
+        refreshChannels[RefreshChannel.Loans] ??
+        refreshChannels[RefreshChannel.Payments] ??
+        refreshChannels[RefreshChannel.Settlements] ??
+        0;
+
   const fetchStats = useCallback(async () => {
     try {
       const s = await customerService.getStats();
@@ -138,7 +147,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats, refresh]);
+  }, [fetchStats, refreshChannel]);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -146,7 +155,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
       const params: any = {
         page: currentPage,
         limit: pageSize,
-        sortBy: "createdAt",
+        sortBy: "customerNumber",
         sortOrder: "desc",
       };
 
@@ -164,7 +173,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, debouncedSearch, filterKyc, refresh]);
+  }, [currentPage, pageSize, debouncedSearch, filterKyc, refreshChannel]);
 
   useEffect(() => {
     fetchCustomers();
@@ -245,7 +254,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
 
       {/* KYC Filter Tabs */}
       <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs overflow-x-auto text-xs">
-        <span className="text-slate-400 font-medium mr-1">KYC Filter:</span>
+        <span className="hidden md:block text-slate-400 font-medium mr-1">KYC Filter:</span>
         {(["All", "Pending", "Verified"] as const).map((tab) => {
           const count =
             tab === "All"
@@ -271,66 +280,83 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
       </div>
 
       {/* Content */}
-      {customers.length === 0 && !loading ? (
-        <div className="bg-white border border-slate-200/80 rounded-xl p-12 text-center space-y-2 flex-1">
-          <Users className="w-8 h-8 text-slate-400 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-900">
-            No Customers Found
-          </h3>
-          <p className="text-xs text-slate-500">
-            Try adjusting your search query or filter.
-          </p>
-        </div>
-      ) : viewMode === "list" ? (
-        /* LIST VIEW — content-fit */
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
-          {/* Table label */}
-          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Customer Accounts Directory
-            </h3>
-            <span className="text-[10px] text-slate-400">
-              {totalItems} record{totalItems !== 1 ? "s" : ""}
-            </span>
-          </div>
+      {
+        // customers.length === 0 && !loading ? (
+        //   <div className="bg-white border border-slate-200/80 rounded-xl p-12 text-center space-y-2 flex-1">
+        //     <Users className="w-8 h-8 text-slate-400 mx-auto" />
+        //     <h3 className="text-sm font-bold text-slate-900">
+        //       No Customers Found
+        //     </h3>
+        //     <p className="text-xs text-slate-500">
+        //       Try adjusting your search query or filter.
+        //     </p>
+        //   </div>
+        // ) :
+        viewMode === "list" ? (
+          /* LIST VIEW — content-fit */
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
+            {/* Table label */}
+            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Customer Accounts Directory
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                {totalItems} record{totalItems !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-          {/* Table */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
-                <tr className="border-b border-slate-200/80">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Customer Details
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    NIC / ID
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Contact & Location
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Occupation / Income
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    KYC Status
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Total Borrowed
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Total Repaid
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Associated Loans
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loading
-                  ? Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
+                  <tr className="border-b border-slate-200/80">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Customer Details
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      NIC / ID
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Contact & Location
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Occupation / Income
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      KYC Status
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Total Borrowed
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Total Repaid
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      Associated Loans
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {loading ? (
+                    Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
                       <SkeletonRow key={`sk-${i}`} />
                     ))
-                  : customers.map((cust) => {
+                  ) : customers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <Users className="w-8 h-8 text-slate-400 mx-auto" />
+                          <h3 className="text-sm font-bold text-slate-900">
+                            No Customers Found
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Try adjusting your search query or filter.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    customers.map((cust) => {
                       const loans = cust.loans ?? [];
                       const totalBorrowed = loans.reduce(
                         (sum, l) =>
@@ -436,28 +462,44 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
                           </td>
                         </tr>
                       );
-                    })}
-              </tbody>
-            </table>
-          </div>
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            itemName="customer records"
-          />
-        </div>
-      ) : (
-        /* GRID VIEW */
-        <div className="space-y-4 flex flex-col flex-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start items-start">
-            {loading
-              ? Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
+            {customers.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemName="customer records"
+              />
+            )}
+          </div>
+        ) : (
+          /* GRID VIEW */
+          <div className="space-y-4 flex flex-col flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start items-start">
+              {loading ? (
+                Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
                   <SkeletonCard key={`sk-${i}`} />
                 ))
-              : customers.map((cust) => {
+              ) : customers.length === 0 ? (
+                <div className="py-8 text-center md:col-span-2 lg:col-span-3">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <Users className="w-8 h-8 text-slate-400 mx-auto" />
+                    <h3 className="text-sm font-bold text-slate-900">
+                      No Customers Found
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Try adjusting your search query or filter.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                customers.map((cust) => {
                   const loans = cust.loans ?? [];
                   const totalBorrowed = loans.reduce(
                     (sum, l) => sum + Number(l.account?.disbursedAmount || 0),
@@ -570,20 +612,24 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({
                       )}
                     </div>
                   );
-                })}
-          </div>
+                })
+              )}
+            </div>
 
-          <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              itemName="customer records"
-            />
+            {customers.length > 0 && (
+              <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemName="customer records"
+                />
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )
+      }
     </div>
   );
 };

@@ -7,3 +7,4 @@ export * from "./payment.types";
 export * from "./consultancy.types";
 export * from "./report.types";
 export * from "./sms.types";
+export * from "./notification.types";

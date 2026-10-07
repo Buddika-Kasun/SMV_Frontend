@@ -3,7 +3,17 @@ import { useLocation } from "react-router-dom";
 import { userService } from "../../services/user.service";
 import toast from "react-hot-toast";
 import { User } from "../../api";
-import { Building2, Lock, User as UserIcon, ArrowRight } from "lucide-react";
+import {
+  Building2,
+  Lock,
+  User as UserIcon,
+  ArrowRight,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+
+import logoIcon from "@/src/assets/logo2.jpg";
+import { BRAND } from "@/src/config/brand";
 
 interface LoginScreenProps {
   onLoginSuccess?: (user: User) => void;
@@ -12,6 +22,7 @@ interface LoginScreenProps {
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,8 +47,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           onLoginSuccess(result.user);
         }
 
+        // Route by role: staff land on applications, others on dashboard
+        const target =
+          result.user.role === "staff" ? "/applications" : "/dashboard";
+
         setTimeout(() => {
-          window.location.href = "/dashboard?from=login_success";
+          window.location.href = `${target}?from=login_success`;
         }, 1000);
       } else {
         setError(result.error || "Login failed");
@@ -57,15 +72,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       <div className="max-w-md w-full space-y-6">
         {/* Branding */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 text-white mx-auto">
-            <Building2 className="w-7 h-7" />
+          <div className="inline-flex items-center justify-center drop-shadow-lg drop-shadow-blue-500/30 text-white mx-auto">
+            <img
+              src={logoIcon}
+              alt={BRAND.name}
+              className="w-14 h-14 object-contain"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              SMV Holdings
+              {BRAND.name}
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Micro Finance Management Enterprise Portal
+              {BRAND.tagline} Management Enterprise Portal
             </p>
           </div>
         </div>
@@ -122,14 +141,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-hidden transition text-xs"
+                    className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-hidden transition text-xs [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    disabled={loading}
+                    tabIndex={-1}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer disabled:opacity-50"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -157,9 +192,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Footer */}
         <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-slate-400" />
-          <span>
-            Role-Based Access Control • SMV Enterprise Secure System
-          </span>
+          <span>Role-Based Access Control • {BRAND.shortName} Secure System</span>
         </div>
       </div>
     </div>

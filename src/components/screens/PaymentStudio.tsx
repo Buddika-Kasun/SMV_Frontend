@@ -5,7 +5,7 @@ import {
   ColumnConfig,
 } from "../../hooks/useResizableColumns";
 import { ResizableTh, ResizableTableContainer } from "../common/ResizableTable";
-import { PaymentReceiptModal } from "../PaymentReceiptModal";
+import { PaymentReceiptModal } from "../Modals/PaymentReceiptModal";
 import { Pagination } from "../common/Pagination";
 import { ConfirmModal } from "../common/ConfirmModal";
 import {
@@ -37,11 +37,15 @@ import {
 } from "../../utils/loanUtils";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts";
-import { ClearanceCertificateModal } from "../ClearanceCertificateModal";
+import { ClearanceCertificateModal } from "../Modals/ClearanceCertificateModal";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface PaymentStudioProps {
   initialLoanId?: string | null;
-  onOpenLoanDetails: (loanId: string) => void,
+  onOpenLoanDetails: (loanId: string) => void;
+  // onRefresh: () => void;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const PAYMENT_QUEUE_COLUMNS: ColumnConfig[] = [
@@ -146,6 +150,9 @@ const PaymentFormSkeleton: React.FC = () => (
 export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   initialLoanId,
   onOpenLoanDetails,
+  // onRefresh,
+  // refresh,
+  refreshChannels,
 }) => {
   const { currentUser } = useAuth();
 
@@ -197,6 +204,12 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
 
   const pageSize = queueViewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
 
+  const refreshChannel =
+    refreshChannels[RefreshChannel.Loans] ??
+    refreshChannels[RefreshChannel.Payments] ??
+    refreshChannels[RefreshChannel.Settlements] ??
+    0;
+
   const {
     columnWidths,
     startResize,
@@ -232,7 +245,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setQueueLoading(false);
     }
-  }, [queuePage, pageSize, debouncedSearch, queueStatus]);
+  }, [queuePage, pageSize, debouncedSearch, queueStatus, refreshChannel]);
 
   useEffect(() => {
     fetchQueueLoans();
@@ -245,8 +258,8 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     setDropdownLoading(true);
     try {
       const loans = await loanService.getLoansListByStatus([
-        "Active",
         "Overdue",
+        "Active",
       ]);
       setDropdownLoans(loans);
     } catch (error) {
@@ -255,7 +268,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     } finally {
       setDropdownLoading(false);
     }
-  }, []);
+  }, [refreshChannel]);
 
   useEffect(() => {
     fetchDropdownLoans();
@@ -305,7 +318,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
     if (selectedLoanId) {
       fetchCurrentLoan(selectedLoanId);
     }
-  }, [selectedLoanId, fetchCurrentLoan]);
+  }, [selectedLoanId, fetchCurrentLoan, refreshChannel]);
 
   // ---------------------------------------------------------
   // Handlers
@@ -346,9 +359,12 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
 
       if (payment) {
         setLastPaymentRecord(payment);
-        await fetchCurrentLoan(currentLoan.id);
-        await fetchQueueLoans();
-        await fetchDropdownLoans();
+
+        // onRefresh();
+
+        // await fetchCurrentLoan(currentLoan.id);
+        // await fetchQueueLoans();
+        // await fetchDropdownLoans();
       }
     } catch (error: any) {
       console.error("Payment failed:", error);
@@ -430,7 +446,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
             }
             onChange={(e) => setSelectedLoanId(e.target.value)}
             disabled={dropdownLoading}
-            className="bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 max-w-70 disabled:opacity-60"
+            className="hidden md:block bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 max-w-70 disabled:opacity-60"
           >
             <option value=" " disabled>
               {dropdownLoading
@@ -715,6 +731,27 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
           )}
         </div>
       )}
+
+      <select
+        value={
+          selectedLoanId && dropdownLoans.some((l) => l.id === selectedLoanId)
+            ? selectedLoanId
+            : " "
+        }
+        onChange={(e) => setSelectedLoanId(e.target.value)}
+        disabled={dropdownLoading}
+        className="md:hidden bg-white text-slate-800 font-medium text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:outline-none focus:ring-1 focus:ring-slate-300 disabled:opacity-60"
+      >
+        <option value=" " disabled>
+          {dropdownLoading ? "Loading loans..." : "Select an active loan..."}
+        </option>
+        {dropdownLoans.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.customer?.fullName} ({l.loanNumber || l.id}) -{" "}
+            {getLoanStatusLabel(l.status)}
+          </option>
+        ))}
+      </select>
 
       {/* LOAN DETAIL + PAYMENT FORM */}
       {!currentLoan && !loanLoading ? (

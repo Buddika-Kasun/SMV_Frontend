@@ -4,8 +4,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Navigation } from "../Navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { TabType } from "@/src/types";
 import { useUI } from "@/src/contexts/UIContext";
+import { TabType } from "@/src/types/app.types";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,11 +20,19 @@ export const Layout: React.FC<LayoutProps> = ({
   openNewLoanModal,
   openLoanDetails,
 }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout } =
+    useAuth();
 
   // const { activeConsultancyCount } = useConsultancies();
 
-  const { navCounts, setActiveTab } = useUI();
+  const {
+    navCounts,
+    setActiveTab,
+    refreshKey,
+    triggerRefresh,
+    refreshChannels,
+    unreadNotificationCount,
+  } = useUI();
 
   // If no current user, don't render
   if (!currentUser) {
@@ -42,7 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
+    <div className="flex flex-col md:flex-row h-dvh md:h-screen overflow-hidden bg-slate-50/50 text-slate-800 font-sans antialiased">
       <Navigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -51,6 +59,9 @@ export const Layout: React.FC<LayoutProps> = ({
         overdueCount={navCounts.overdue}
         // activeConsultancyCount={activeConsultancyCount}
         currentUser={currentUser}
+        onLogout={logout}
+        refresh={triggerRefresh}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
@@ -60,12 +71,13 @@ export const Layout: React.FC<LayoutProps> = ({
           onSelectLoan={openLoanDetails}
           currentUser={currentUser}
           onLogout={logout}
+          // refresh={refreshKey}
+          refreshChannels={refreshChannels}
+          unreadNotificationCount={unreadNotificationCount}
         />
 
         <main className="overflow-y-auto flex flex-col flex-1">
-          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full max-w-7xl mx-auto">
-            {children}
-          </div>
+          <div className="p-4 sm:p-6 space-y-6 flex-1 w-full">{children}</div>
 
           <Footer currentUser={currentUser} />
         </main>

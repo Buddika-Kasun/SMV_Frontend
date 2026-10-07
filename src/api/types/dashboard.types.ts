@@ -1,6 +1,7 @@
 export interface DashboardHeader {
   totalDisbursedAmount: number;
   totalOutstanding: number;
+  smsUnit: number;
 }
 
 export interface DashboardLoanRow {

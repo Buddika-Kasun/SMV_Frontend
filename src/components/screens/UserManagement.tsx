@@ -27,10 +27,13 @@ import { ConfirmModal } from "../common/ConfirmModal";
 import toast from "react-hot-toast";
 import { useDebounce } from "../../hooks/useDebounce";
 import { User, UserRole } from "../../api";
-import { toDateInput } from "../../utils/loanUtils";
+import { toDateInput, toDateTimeDisplay } from "../../utils/loanUtils";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
 
 interface UserManagementProps {
   currentUser: User;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
 }
 
 const PAGE_SIZE = 10;
@@ -89,6 +92,8 @@ const SkeletonRow: React.FC = () => (
  */
 export const UserManagement: React.FC<UserManagementProps> = ({
   currentUser,
+  // refresh,
+  refreshChannels,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -96,6 +101,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   const [adminUser, setAdminUser] = useState<User | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(true);
+
+  const refreshChannel = refreshChannels[RefreshChannel.Users] ?? 0;
+  
 
   // Filter states
   const [search, setSearch] = useState("");
@@ -172,7 +180,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder]);
+  }, [currentPage, debouncedSearch, roleFilter, sortBy, sortOrder, refreshChannel]);
 
   // Load users on filter change
   useEffect(() => {
@@ -249,7 +257,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (res.success && res.user) {
       toast.success(`User "${res.user.fullName}" created successfully!`);
       setIsCreateModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to create user.");
     }
@@ -282,7 +290,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     if (res.success) {
       toast.success(`User details for "${selectedUser.fullName}" updated!`);
       setIsEditModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to update user.");
     }
@@ -307,16 +315,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleConfirmPasswordReset = async () => {
     if (!selectedUser || !resetPasswordValue) return;
 
-    const res = await userService.updateUser(selectedUser.id, {
-      password: resetPasswordValue,
-    });
+    const res = await userService.updateUser(
+      selectedUser.id,
+      {},
+      resetPasswordValue,
+    );
 
     setIsPasswordChangeConfirmOpen(false);
 
     if (res.success) {
       toast.success(`Password updated for user "${selectedUser.fullName}"!`);
       setIsPasswordModalOpen(false);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to reset password.");
     }
@@ -339,7 +349,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       toast.success(
         `User "${userToToggleStatus.fullName}" ${newStatus ? "activated" : "deactivated"}.`,
       );
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Status update failed.");
     }
@@ -357,7 +367,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     setUserToDelete(null);
     if (res.success) {
       toast.success(`User account deleted.`);
-      fetchUsers();
+      // fetchUsers();
     } else {
       toast.error(res.error || "Failed to delete user.");
     }
@@ -366,7 +376,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleConfirmResetDefaults = async () => {
     await userService.resetToDefaults();
     setIsResetDefaultsConfirmOpen(false);
-    fetchUsers();
+    // fetchUsers();
     toast.success(
       "User database reset to defaults. Canonical sysadmin, manager, and staff accounts restored.",
     );
@@ -677,7 +687,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       {/* Last Login / Created */}
                       <td className="px-4 py-3 text-[11px] text-slate-500">
                         <span className="block font-medium text-slate-700">
-                          {user.lastLogin || "Never logged in"}
+                          {toDateTimeDisplay(user.lastLogin) ||
+                            "Never logged in"}
                         </span>
                         <span className="text-[10px] text-slate-400">
                           Created: {toDateInput(user.createdAt)}
@@ -689,16 +700,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleOpenEdit(user)}
-                            className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
                             title="Edit User Profile"
+                            disabled={
+                              user.role == "admin" &&
+                              currentUser.role !== "admin"
+                            }
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
 
                           <button
                             onClick={() => handleOpenPasswordReset(user)}
-                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
                             title="Reset Password"
+                            disabled={
+                              user.role == "admin" &&
+                              currentUser.role !== "admin"
+                            }
                           >
                             <Key className="w-3.5 h-3.5" />
                           </button>
@@ -726,7 +745,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                             </button>
                           ) : (
                             <div
-                              className="p-1.5 text-slate-300"
+                              className="p-1.5 text-slate-300 cursor-not-allowed"
                               title="Primary Administrator account cannot be deactivated"
                             >
                               <Lock className="w-3.5 h-3.5" />

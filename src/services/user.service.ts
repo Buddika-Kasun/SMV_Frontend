@@ -4,7 +4,7 @@ import { userEndpoint } from "../api/endpoints/user.endpoint";
 import { TokenService } from "../api/services/token.service";
 
 // Session storage keys
-const SESSION_STORAGE_KEY = "smv_holdings_current_session_v3";
+const SESSION_STORAGE_KEY = "smv_user";
 
 export interface UserFilterParams {
   page?: number;
@@ -143,14 +143,14 @@ export class UserService {
 
       if (response.success && response.data) {
         // Store tokens and user data
-        TokenService.setTokens(
-          response.data.accessToken,
-          response.data.refreshToken,
-          response.data.expiresIn,
-        );
+        // TokenService.setTokens(
+        //   response.data.accessToken,
+        //   response.data.refreshToken,
+        //   response.data.expiresIn,
+        // );
 
         const user = response.data.user;
-        this.setCurrentUser(user);
+        // this.setCurrentUser(user);
 
         return { success: true, user };
       } else {

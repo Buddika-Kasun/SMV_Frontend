@@ -79,6 +79,18 @@ export class CustomerService {
       return [];
     }
   }
+
+  async sendPhoneOtp(phone: string): Promise<{ requestId: string }> {
+    const response = await customerEndpoint.sendPhoneOtp({ phone });
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || "Failed to send OTP");
+  }
+
+  async verifyPhoneOtp(phone: string, code: string): Promise<boolean> {
+    const response = await customerEndpoint.verifyPhoneOtp({ phone, code });
+    if (response.success && response.data) return response.data.verified;
+    throw new Error(response.message || "Failed to verify OTP");
+  }
 }
 
 export const customerService = CustomerService.getInstance();

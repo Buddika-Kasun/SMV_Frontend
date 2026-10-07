@@ -3,7 +3,7 @@ import { User } from "../types";
 const STORAGE_KEYS = {
   ACCESS_TOKEN: "access_token",
   REFRESH_TOKEN: "refresh_token",
-  USER: "user",
+  USER: "smv_user",
   EXPIRES_AT: "expires_at",
 } as const;
 

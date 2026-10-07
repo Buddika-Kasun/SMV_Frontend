@@ -11,7 +11,8 @@ import { EarlySettlementStudio } from "./screens/EarlySettlementStudio";
 import { CustomerDirectory } from "./screens/CustomerDirectory";
 import { UserManagement } from "./screens/UserManagement";
 import { ReportsStudio } from "./screens/ReportsStudio";
-import { TabType } from "../types";
+import { TabType } from "../types/app.types";
+import { NotificationCenter } from "./screens/NotificationCenter";
 
 interface MainContentProps {
   activeTab: string;
@@ -30,17 +31,21 @@ export const MainContent: React.FC<MainContentProps> = ({
   // Get UI functions from context
   const {
     refreshKey,
+    refreshChannels,
+    triggerRefresh,
     selectedLoanId,
     setSelectedLoanId,
     openLoanDetails,
     openNewLoanModal,
+    openDocumentPreview,
   } = useUI();
 
   switch (activeTab) {
     case "dashboard":
       return isManagerOrAdmin ? (
         <Dashboard
-          refresh={refreshKey}
+          // refresh={refreshKey}
+          refreshChannels={refreshChannels}
           currentUser={currentUser!}
           onSelectLoan={setSelectedLoanId}
           onTabChange={setActiveTab}
@@ -52,7 +57,7 @@ export const MainContent: React.FC<MainContentProps> = ({
     case "applications":
       return (
         <LoanApplications
-          refresh={refreshKey}
+          refreshChannels={refreshChannels}
           currentUser={currentUser!}
           onSelectLoan={setSelectedLoanId}
           onTabChange={setActiveTab}
@@ -62,13 +67,25 @@ export const MainContent: React.FC<MainContentProps> = ({
       );
 
     case "kyc":
-      return <KYCStudio initialLoanId={selectedLoanId} />;
+      return (
+        <KYCStudio
+          initialLoanId={selectedLoanId}
+          // refresh={refreshKey}
+          // onRefresh={triggerRefresh}
+          refreshChannels={refreshChannels}
+          onOpenLoanDetails={openLoanDetails}
+          openDocumentPreview={openDocumentPreview}
+        />
+      );
 
     case "payments":
       return (
         <PaymentStudio
           initialLoanId={selectedLoanId}
           onOpenLoanDetails={openLoanDetails}
+          // refresh={refreshKey}
+          // onRefresh={triggerRefresh}
+          refreshChannels={refreshChannels}
         />
       );
 
@@ -77,28 +94,40 @@ export const MainContent: React.FC<MainContentProps> = ({
         <EarlySettlementStudio
           initialLoanId={selectedLoanId}
           onOpenLoanDetails={openLoanDetails}
+          // refresh={refreshKey}
+          // onRefresh={triggerRefresh}
+          refreshChannels={refreshChannels}
         />
       );
 
     case "customers":
       return (
         <CustomerDirectory
-          refresh={refreshKey}
+          // refresh={refreshKey}
+          refreshChannels={refreshChannels}
           onSelectLoan={openLoanDetails}
         />
       );
 
     case "users":
       return isManagerOrAdmin ? (
-        <UserManagement currentUser={currentUser!} />
+        <UserManagement
+          currentUser={currentUser!}
+          // refresh={refreshKey}
+          refreshChannels={refreshChannels}
+        />
       ) : null;
 
     case "reports":
       return isManagerOrAdmin ? (
-        <ReportsStudio loans={loans} 
-        // consultancies={consultancies} 
+        <ReportsStudio
+          loans={loans}
+          // consultancies={consultancies}
         />
       ) : null;
+
+    case "notifications":
+      return <NotificationCenter />;
 
     default:
       return null;

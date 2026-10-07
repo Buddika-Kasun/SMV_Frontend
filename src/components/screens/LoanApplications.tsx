@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   useResizableColumns,
   ColumnConfig,
@@ -17,9 +17,9 @@ import {
   LayoutGrid,
   LayoutList,
   Lock,
+  UserCheck,
 } from "lucide-react";
-import { Loan, User } from "../../api";
-import { TabType } from "../../types";
+import { Loan, LoanStateCounts, User } from "../../api";
 import { formatCurrency } from "../../utils/consultancyUtils";
 import { loanService } from "../../services/loan.service";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -29,6 +29,11 @@ import {
   getLoanStatusConfig,
   getLoanTypeLabel,
 } from "../../utils/loanUtils";
+import { useLocation, useNavigate } from "react-router-dom";
+import { TabType } from "@/src/types/app.types";
+import { useUI } from "@/src/contexts";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
+import { BRAND } from "@/src/config/brand";
 
 // ---------------------------------------------------------
 // Skeleton Row (List View)
@@ -117,7 +122,7 @@ const SkeletonCard: React.FC = () => (
 );
 
 interface LoanApplicationsProps {
-  refresh: number;
+  refreshChannels: Record<string, number>;
   onOpenLoanDetails: (loanId: string) => void;
   onSelectLoan: (loanId: string) => void;
   onOpenNewLoanModal: () => void;
@@ -152,7 +157,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const LoanApplications: React.FC<LoanApplicationsProps> = ({
-  refresh,
+  refreshChannels,
   onOpenLoanDetails,
   onSelectLoan,
   onOpenNewLoanModal,
@@ -163,6 +168,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   const [loans, setLoans] = useState<Loan[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingConfirmation, setLoadingConfirmation] = useState(false);
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState<string>("Pending_Approval");
@@ -176,6 +182,51 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   const [loanToReject, setLoanToReject] = useState<Loan | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Status counts for the filter chips
+  const [statusCounts, setStatusCounts] = useState<LoanStateCounts | null>(
+    null,
+  );
+  const [countsLoading, setCountsLoading] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [userName, setUserName] = useState("");
+  const toastShown = useRef(false);
+
+  const loansChannel = refreshChannels[RefreshChannel.Loans] ?? 0;
+
+  // Login welcome banner — shown when arriving from the login screen
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const from = params.get("from");
+
+    if (from === "login_success" && !toastShown.current) {
+      const userStr = localStorage.getItem("smv_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setUserName(user.fullName);
+          setShowWelcome(true);
+          toastShown.current = true;
+
+          toast.success(`Welcome back, ${user.fullName}!`, {
+            duration: 3000,
+            icon: "👋",
+          });
+
+          setTimeout(() => {
+            setShowWelcome(false);
+            navigate("/applications", { replace: true });
+          }, 4000);
+        } catch (error) {
+          console.error("Failed to parse user data:", error);
+        }
+      }
+    }
+  }, [location, navigate]);
+
   const canApprove =
     currentUser.role === "admin" || currentUser.role === "manager";
   const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
@@ -188,6 +239,22 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
   //   resizingColId,
   //   totalTableWidth,
   // } = useResizableColumns(LOAN_COLUMNS, "loan_applications");
+
+  const fetchStatusCounts = useCallback(async () => {
+    setCountsLoading(true);
+    try {
+      const counts = await loanService.getStateCounts();
+      setStatusCounts(counts);
+    } catch (error) {
+      console.error("Failed to fetch status counts:", error);
+    } finally {
+      setCountsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatusCounts();
+  }, [fetchStatusCounts, loansChannel]);
 
   // Fetch loans from API
   const fetchLoans = useCallback(async () => {
@@ -212,7 +279,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, debouncedSearch, filterStatus, refresh]);
+  }, [currentPage, pageSize, debouncedSearch, filterStatus, loansChannel]);
 
   // Load on filter/page change
   useEffect(() => {
@@ -221,24 +288,30 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
   const handleConfirmApproval = async () => {
     if (!loanToApprove) return;
+    setLoadingConfirmation(true);
     try {
       await loanService.approveLoan(loanToApprove.id);
       setLoanToApprove(null);
-      fetchLoans();
+      // fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
+    } finally {
+      setLoadingConfirmation(false);
     }
   };
 
   const handleConfirmRejection = async () => {
     if (!loanToReject) return;
+    setLoadingConfirmation(true);
     try {
       await loanService.rejectLoan(loanToReject.id, rejectReason);
       setLoanToReject(null);
       setRejectReason("");
-      fetchLoans();
+      // fetchLoans();
     } catch (error) {
       // Error already toasted inside the service
+    } finally{
+      setLoadingConfirmation(false);
     }
   };
 
@@ -260,6 +333,58 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
   return (
     <div className="space-y-4 flex flex-col h-full">
+      {/* Welcome Banner — shown on login success */}
+      {showWelcome && (
+        <div className="bg-linear-to-r from-emerald-500 to-emerald-600 rounded-xl p-5 shadow-lg animate-in slide-in-from-top duration-500 border border-emerald-400/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <UserCheck className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-xl">
+                  Welcome back, {userName}! 👋
+                </h2>
+                <p className="text-emerald-100 text-sm mt-0.5">
+                  You have successfully logged in to {BRAND.name} {BRAND.tagline}
+                  Portal
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/10">
+                <span className="text-white font-semibold text-xs flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
+                  ✓ Session Active
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWelcome(false);
+                  toastShown.current = false;
+                  navigate("/applications", { replace: true });
+                }}
+                className="text-white/70 hover:text-white transition p-1 cursor-pointer"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header & New Request Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
         <div>
@@ -288,7 +413,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
               title="List View (10 per page)"
             >
               <LayoutList className="w-4 h-4" />
-              <span className="hidden md:inline text-xs">List View</span>
+              {/* <span className="hidden md:inline text-xs">List View</span> */}
             </button>
             <button
               onClick={() => handleViewModeChange("grid")}
@@ -300,7 +425,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
               title="Grid View (9 per page)"
             >
               <LayoutGrid className="w-4 h-4" />
-              <span className="hidden md:inline text-xs">Grid View</span>
+              {/* <span className="hidden md:inline text-xs">Grid View</span> */}
             </button>
           </div>
 
@@ -316,20 +441,38 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+        <div className="flex items-center gap-1.5 py-0.5 flex-wrap">
           {STATUS_OPTIONS.map((st) => {
             const cfg = st === "All" ? null : getLoanStatusConfig(st);
+
+            // Pick the right count for this status
+            const count =
+              st === "All"
+                ? (statusCounts?.total ?? 0)
+                : (statusCounts?.[st as keyof LoanStateCounts] ?? 0);
+
             return (
               <button
                 key={st}
                 onClick={() => handleStatusFilterChange(st)}
-                className={`px-2 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition cursor-pointer ${
+                className={`px-2 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition cursor-pointer inline-flex items-center gap-1.5 ${
                   filterStatus === st
                     ? "bg-blue-600 text-white shadow-xs"
                     : "bg-white text-slate-600 hover:bg-blue-50/80 hover:text-blue-700 border border-slate-200/80"
                 }`}
               >
-                {cfg?.label || st}
+                <span>{cfg?.label || st}</span>
+                {countsLoading ? (
+                  <span
+                    className={`inline-block h-2.5 w-6 rounded animate-pulse ${
+                      filterStatus === st ? "bg-white/40" : "bg-slate-200"
+                    }`}
+                  />
+                ) : (
+                  <span className="opacity-80">
+                    ({count > 99 ? "99+" : count})
+                  </span>
+                )}
               </button>
             );
           })}
@@ -348,66 +491,84 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       </div>
 
       {/* Empty / Loading / Data State */}
-      {loans.length === 0 && !loading ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-slate-200/80 text-slate-500 shadow-2xs flex-1">
-          <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-          <p className="font-semibold text-slate-700 text-xs">
-            No matching loan applications found.
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Try selecting a different status filter or clear your search term.
-          </p>
-        </div>
-      ) : viewMode === "list" ? (
-        /* LIST VIEW */
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
-          {/* Table Header Label */}
-          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Loan Applications & Approvals
-            </h3>
-            <span className="text-[10px] text-slate-400">
-              {totalItems} record{totalItems !== 1 ? "s" : ""}
-            </span>
-          </div>
+      {
+        // loans.length === 0 && !loading ? (
+        //   <div className="text-center py-12 bg-white rounded-xl border border-slate-200/80 text-slate-500 shadow-2xs flex-1">
+        //     <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+        //     <p className="font-semibold text-slate-700 text-xs">
+        //       No matching loan applications found.
+        //     </p>
+        //     <p className="text-[11px] text-slate-400 mt-0.5">
+        //       Try selecting a different status filter or clear your search term.
+        //     </p>
+        //   </div>
+        // ) :
+        viewMode === "list" ? (
+          /* LIST VIEW */
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col flex-1">
+            {/* Table Header Label */}
+            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Loan Applications & Approvals
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                {totalItems} record{totalItems !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-          {/* Table */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
-                <tr className="border-b border-slate-200/80">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Loan ID & Acc ID
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Applicant
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Loan Product
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Principal (LKR)
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Outstanding (LKR)
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Term / Rate
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loading
-                  ? Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
+                  <tr className="border-b border-slate-200/80">
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Loan ID & Acc ID
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Applicant
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Loan Product
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Principal (LKR)
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Outstanding (LKR)
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      Term / Rate
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {loading ? (
+                    Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
                       <SkeletonRow key={`sk-${i}`} />
                     ))
-                  : loans.map((loan) => {
+                  ) : loans.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <FileText className="w-8 h-8 text-slate-300" />
+                          <p className="font-semibold text-slate-700 text-xs">
+                            No matching loan applications found.
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            Try selecting a different status filter or clear
+                            your search term.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    loans.map((loan) => {
                       const cfg = getLoanStatusConfig(loan.status);
                       const isPendingApproval =
                         loan.status === "Pending_Approval";
@@ -466,7 +627,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                               {loan.termMonths} Mo.
                             </span>
                             <span className="text-[10px] text-slate-500 font-mono block">
-                              {loan.interestRatePerAnnum}% p.a.
+                              {loan.interestRatePerAnnum/12}% p.m.
                             </span>
                           </td>
 
@@ -556,28 +717,45 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                           </td>
                         </tr>
                       );
-                    })}
-              </tbody>
-            </table>
-          </div>
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            itemName="applications"
-          />
-        </div>
-      ) : (
-        /* GRID VIEW (9 per page) */
-        <div className="space-y-4 flex flex-col flex-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-            {loading
-              ? Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
+            {loans.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemName="applications"
+              />
+            )}
+          </div>
+        ) : (
+          /* GRID VIEW (9 per page) */
+          <div className="space-y-4 flex flex-col flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+              {loading ? (
+                Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
                   <SkeletonCard key={`sk-${i}`} />
                 ))
-              : loans.map((loan) => {
+              ) : loans.length === 0 ? (
+                <div className="py-8 text-center md:col-span-2 lg:col-span-3">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <FileText className="w-8 h-8 text-slate-300" />
+                    <p className="font-semibold text-slate-700 text-xs">
+                      No matching loan applications found.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Try selecting a different status filter or clear your
+                      search term.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                loans.map((loan) => {
                   const cfg = getLoanStatusConfig(loan.status);
                   const isPendingApproval = loan.status === "Pending_Approval";
                   const isKycPending = loan.status === "KYC_Pending";
@@ -641,7 +819,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                           <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>Interest:</span>
                             <span className="text-slate-800 font-medium">
-                              {loan.interestRatePerAnnum}% (
+                              {loan.interestRatePerAnnum/12}% (
                               {getInterestMethodLabel(loan.interestMethod)})
                             </span>
                           </div>
@@ -735,20 +913,24 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                       </div>
                     </div>
                   );
-                })}
-          </div>
+                })
+              )}
+            </div>
 
-          <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              itemName="applications"
-            />
+            {loans.length > 0 && (
+              <div className="mt-auto bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemName="applications"
+                />
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Approve Confirmation */}
       <ConfirmModal
@@ -774,7 +956,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
                 },
                 {
                   label: "Loan Term & Rate",
-                  value: `${loanToApprove.termMonths} Mo. @ ${loanToApprove.interestRatePerAnnum}% p.a.`,
+                  value: `${loanToApprove.termMonths} Mo. @ ${loanToApprove.interestRatePerAnnum/12}% p.m.`,
                 },
               ]
             : []
@@ -794,6 +976,7 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
         confirmLabel="Confirm Rejection"
         cancelLabel="Keep Application"
         variant="danger"
+        isLoading={loadingConfirmation}
         input={{
           label: "Rejection Reason",
           placeholder:
@@ -828,4 +1011,4 @@ export const LoanApplications: React.FC<LoanApplicationsProps> = ({
       />
     </div>
   );
-};
+};;

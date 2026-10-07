@@ -21,9 +21,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Direct localStorage check - most reliable
         const token = localStorage.getItem("access_token");
-        const userStr = localStorage.getItem("smv_holdings_current_session_v3");
+        const userStr = localStorage.getItem("smv_user");
 
         if (token && userStr) {
           const user = JSON.parse(userStr);
@@ -95,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+};;
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { TabType } from "../../types";
 import {
   Banknote,
   TrendingUp,
@@ -26,10 +25,14 @@ import {
   getLoanStatusLabel,
   getLoanTypeLabel,
 } from "../../utils/loanUtils";
+import { TabType } from "@/src/types/app.types";
+import { RefreshChannel } from "@/src/constants/refreshChannels";
+import { BRAND } from "@/src/config/brand";
 
 interface DashboardProps {
   currentUser: User;
-  refresh: number;
+  // refresh: number;
+  refreshChannels: Record<string, number>;
   onTabChange: (tab: TabType) => void;
   onSelectLoan: (loanId: string) => void;
   onOpenNewLoanModal: () => void;
@@ -56,7 +59,8 @@ const TableRowSkeleton: React.FC<{ cols: number }> = ({ cols }) => (
 
 export const Dashboard: React.FC<DashboardProps> = ({
   currentUser,
-  refresh,
+  // refresh,
+  refreshChannels,
   onTabChange,
   onSelectLoan,
   onOpenNewLoanModal,
@@ -72,13 +76,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const refreshChannel =
+    refreshChannels[RefreshChannel.Stats] ??
+    refreshChannels[RefreshChannel.Loans] ??
+    refreshChannels[RefreshChannel.Payments] ??
+    refreshChannels[RefreshChannel.Settlements] ??
+    0;
+
   // Login welcome
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const from = params.get("from");
 
     if (from === "login_success" && !toastShown.current) {
-      const userStr = localStorage.getItem("smv_holdings_current_session_v3");
+      const userStr = localStorage.getItem("smv_user");
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
@@ -86,9 +97,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           setShowWelcome(true);
           toastShown.current = true;
 
-          toast.success(`👋 Welcome back, ${user.fullName}!`, {
+          toast.success(`Welcome back, ${user.fullName}!`, {
             duration: 3000,
-            icon: "🎉",
+            icon: "👋",
           });
 
           setTimeout(() => {
@@ -118,7 +129,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard, refresh]);
+  }, [fetchDashboard, refreshChannel]);
 
   // Derived
   const totalDisbursed = stats?.totalDisbursedAmount ?? 0;
@@ -151,7 +162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   Welcome back, {userName}! 👋
                 </h2>
                 <p className="text-emerald-100 text-sm mt-0.5">
-                  You have successfully logged in to SMV Holdings Micro Finance
+                  You have successfully logged in to {BRAND.name} {BRAND.tagline}
                   Portal
                 </p>
               </div>
@@ -194,10 +205,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Micro Finance Portfolio
+            {BRAND.tagline} Portfolio
           </h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            SMV Holdings — Real-time micro finance portfolio metrics, LKR
+            {BRAND.name} — Real-time micro finance portfolio metrics, LKR
             collections, and active loan balances.
           </p>
         </div>
@@ -235,7 +246,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <button
-            onClick={() => onTabChange("applications")}
+            onClick={() => onTabChange("payments")}
             className="bg-amber-600 text-white font-medium px-3 py-1.5 rounded-lg text-xs hover:bg-amber-700 transition shrink-0 shadow-2xs cursor-pointer"
           >
             Review Overdue

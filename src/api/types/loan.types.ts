@@ -1,7 +1,8 @@
 import { PaymentMethod, PaymentRecord } from "./payment.types";
 
 export type LoanType =
-  | "Instant_Personal"
+  | "Instant_Loan_Daily"
+  | "Instant_Loan_Monthly"
   | "Standard_Personal"
   | "Business_Expansion"
   | "Micro_Enterprise"
@@ -17,13 +18,25 @@ export type LoanStatus =
   | "Early_Settled"
   | "Rejected";
 
+export interface LoanStateCounts {
+  total: number;
+  Pending_Approval: number;
+  KYC_Pending: number;
+  Approved_Pending_Disbursement: number;
+  Active: number;
+  Overdue: number;
+  Settled: number;
+  Early_Settled: number;
+  Rejected: number;
+}
+
 export type InstallmentStatus =
   | "Paid"
   | "Pending"
   | "Overdue"
   | "Partially_Paid";
 
-export type RepaymentFrequency = "Monthly" | "Bi-Weekly" | "Weekly";
+export type RepaymentFrequency = "Daily" | "Monthly" | "Bi-Weekly" | "Weekly";
 export type InterestMethod = "Flat_Rate" | "Reducing_Balance";
 
 export interface Installment {
@@ -152,6 +165,7 @@ export interface LoanDocument {
   fileName: string;
   fileKey: string;
   fileUrl: string;
+  previewUrl: string;
   status: DocumentStatus;
   uploadedAt: string;
   verifiedAt: string | null;

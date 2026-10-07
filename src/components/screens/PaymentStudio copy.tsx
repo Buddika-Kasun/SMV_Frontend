@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { formatCurrency } from '../../utils/consultancyUtils';
 import { useResizableColumns, ColumnConfig } from '../../hooks/useResizableColumns';
 import { ResizableTh, ResizableTableContainer } from '../common/ResizableTable';
-import { PaymentReceiptModal } from '../PaymentReceiptModal';
+import { PaymentReceiptModal } from '../Modals/PaymentReceiptModal';
 import { Pagination } from '../common/Pagination';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { 
