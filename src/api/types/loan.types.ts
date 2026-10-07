@@ -120,6 +120,7 @@ export interface CustomerData {
 export interface GuarantorData {
   id: string;
   fullName: string;
+  idNumber?: string;
   phone: string;
   relation?: string;
   createdAt: string;
