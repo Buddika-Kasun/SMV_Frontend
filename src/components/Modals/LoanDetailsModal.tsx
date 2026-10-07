@@ -185,9 +185,14 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
               <span className="text-slate-500 block text-[10px] uppercase font-bold">
                 Disbursed Amount
               </span>
-              <span className="font-extrabold text-slate-900 text-xs">
-                {formatCurrency(loan.account?.disbursedAmount!)}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-slate-900 text-xs">
+                  {formatCurrency(loan.account?.disbursedAmount!)}
+                </span>
+                <span className="text-[10px] text-bold">
+                  {loan.disbursedDate ? loan.disbursedDate : "Not disbursed"}
+                </span>
+              </div>
             </div>
             <div>
               <span className="text-slate-500 block text-[10px] uppercase font-bold">
@@ -416,6 +421,9 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                         Guarantor Name:
                       </span>
                       <span>{loan.guarantor?.fullName || "N/A"}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {loan.guarantor?.idNumber || "N/A"}
+                      </span>
                     </div>
                     <div className="flex md:flex-col gap-2 md:gap-0">
                       <span className="text-slate-500 block text-[10px]">
