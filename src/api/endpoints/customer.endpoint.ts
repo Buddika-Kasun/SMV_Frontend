@@ -5,6 +5,7 @@ import {
   CustomerData,
   PaginationParams,
 } from "../types";
+import { UpdateCustomerPayload } from "../types/customer.types";
 
 export const customerEndpoint = {
   /**
@@ -63,4 +64,15 @@ export const customerEndpoint = {
       "/customers/verify-phone/confirm",
       payload,
     ),
+
+  /**
+   * Update an existing customer (partial update).
+   * Only fields present in the payload are changed on the server.
+   */
+  update: (
+    id: string,
+    payload: UpdateCustomerPayload,
+  ): Promise<ApiResponse<CustomerData>> => {
+    return apiClient.patch<CustomerData>(`/customers/${id}`, payload);
+  },
 };
