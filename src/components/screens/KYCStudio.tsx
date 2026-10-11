@@ -132,8 +132,8 @@ const GRID_PAGE_SIZE = 8;
 
 const STATUS_FILTERS = [
   { value: "All", label: "All" },
-  { value: "Pending_Approval", label: "Pending Approval" },
   { value: "KYC_Pending", label: "Pending KYC" },
+  { value: "Pending_Approval", label: "Pending Approval" },
   {
     value: "Approved_Pending_Disbursement",
     label: "Pending Disbursement",
@@ -162,7 +162,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
   onOpenLoanDetails,
   openDocumentPreview,
 }) => {
-  console.log("Initial loan id: ", initialLoanId);
+  // console.log("Initial loan id: ", initialLoanId);
   // ---------------------------------------------------------
   // Queue data for TABLE/GRID (via listLoans with params)
   // ---------------------------------------------------------
@@ -206,6 +206,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
     city: "",
     postalCode: "",
     guarantorName: "",
+    guarantorIdNumber: "",
     guarantorPhone: "",
     guarantorRelation: "Relative",
     // bankName: "",
@@ -325,6 +326,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
         city: loan.customer?.city || "",
         postalCode: loan.customer?.postalCode || "",
         guarantorName: loan.guarantor?.fullName || "",
+        guarantorIdNumber: loan.guarantor?.idNumber || "",
         guarantorPhone: loan.guarantor?.phone || "",
         guarantorRelation: loan.guarantor?.relation || "Relative",
         // deductedFee: loan.processingFee.toString() || "0",
@@ -382,6 +384,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
         },
         guarantor: {
           fullName: formData.guarantorName,
+          idNumber: formData.guarantorIdNumber,
           phone: formData.guarantorPhone,
           relation: formData.guarantorRelation,
         },
@@ -415,9 +418,11 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
 
     switch (currentLoan.status) {
       case "Pending_Approval":
-        return "Awaiting Approval";
-      case "Approved_Pending_Disbursement":
+        // return "Awaiting Approval";
         return "KYC Completed";
+      case "Approved_Pending_Disbursement":
+        // return "KYC Completed";
+        return "Loan Approved";
       case "Active":
       case "Overdue":
       case "Settled":
@@ -1154,7 +1159,7 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                 </div>
 
                 {/* Section 3: Guarantor */}
-                <div className="pt-3 border-t border-slate-100">
+                {/* <div className="pt-3 border-t border-slate-100">
                   <h4 className="text-[11px] font-semibold text-blue-700 mb-2.5 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-blue-600" />
                     Guarantor Details
@@ -1209,6 +1214,92 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                       </FieldSlot>
                     </div>
                   </div>
+                </div> */}
+                {/* Section 3: Guarantor */}
+                <div className="pt-3 border-t border-slate-100">
+                  <h4 className="text-[11px] font-semibold text-blue-700 mb-2.5 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                    Guarantor Details
+                  </h4>
+                  <div className="space-y-3">
+                    {/* Row 1: Name + NIC */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 block mb-1">
+                          Guarantor Name
+                        </label>
+                        <FieldSlot loading={loanLoading}>
+                          <input
+                            type="text"
+                            name="guarantorName"
+                            value={formData.guarantorName}
+                            onChange={handleInputChange}
+                            className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:text-slate-500"
+                            placeholder="e.g. Sunil Perera"
+                            required
+                            disabled={isKycSaveDisabled}
+                          />
+                        </FieldSlot>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 block mb-1">
+                          Guarantor NIC
+                        </label>
+                        <FieldSlot loading={loanLoading}>
+                          <input
+                            type="text"
+                            name="guarantorIdNumber"
+                            value={formData.guarantorIdNumber}
+                            onChange={handleInputChange}
+                            className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono disabled:text-slate-500"
+                            placeholder="e.g. 982-11-4092"
+                            required
+                            disabled={isKycSaveDisabled}
+                          />
+                        </FieldSlot>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Contact + Relation */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 block mb-1">
+                          Guarantor Contact
+                        </label>
+                        <FieldSlot loading={loanLoading}>
+                          <input
+                            type="text"
+                            name="guarantorPhone"
+                            value={formData.guarantorPhone}
+                            onChange={handleInputChange}
+                            className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:text-slate-500"
+                            placeholder="e.g. 0771234567"
+                            required
+                            disabled={isKycSaveDisabled}
+                          />
+                        </FieldSlot>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 block mb-1">
+                          Guarantor Relation
+                        </label>
+                        <FieldSlot loading={loanLoading}>
+                          <input
+                            type="text"
+                            name="guarantorRelation"
+                            value={formData.guarantorRelation}
+                            onChange={handleInputChange}
+                            className="w-full bg-white text-slate-800 text-xs py-1.5 px-3 rounded-lg border border-slate-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:text-slate-500"
+                            placeholder="e.g. Brother"
+                            required
+                            disabled={isKycSaveDisabled}
+                          />
+                        </FieldSlot>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-2">
@@ -1217,10 +1308,12 @@ export const KYCStudio: React.FC<KYCStudioProps> = ({
                     currentLoan.status !== "KYC_Pending" && (
                       <p className="text-[10px] text-slate-500 text-right mr-2 mb-1">
                         {currentLoan.status === "Pending_Approval" &&
-                          "KYC form unlocks after loan approval."}
+                          // "KYC form unlocks after loan approval."}
+                          "KYC has been submitted. Waiting for approval."}
                         {currentLoan.status ===
                           "Approved_Pending_Disbursement" &&
-                          "KYC has been submitted. Waiting for disbursement."}
+                          // "KYC has been submitted. Waiting for disbursement."}
+                          "Loan has been approved. Waiting for disbursement."}
                         {(currentLoan.status === "Active" ||
                           currentLoan.status === "Overdue" ||
                           currentLoan.status === "Settled" ||

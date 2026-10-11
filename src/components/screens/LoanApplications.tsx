@@ -146,8 +146,8 @@ const GRID_PAGE_SIZE = 9;
 
 const STATUS_OPTIONS = [
   "All",
-  "Pending_Approval",
   "KYC_Pending",
+  "Pending_Approval",
   "Approved_Pending_Disbursement",
   "Active",
   "Overdue",
