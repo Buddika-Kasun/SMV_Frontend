@@ -1,5 +1,6 @@
 import { customerEndpoint } from "../api/endpoints/customer.endpoint";
 import { CustomerData } from "../api";
+import { UpdateCustomerPayload } from "../api/types/customer.types";
 
 export class CustomerService {
   private static instance: CustomerService;
@@ -90,6 +91,30 @@ export class CustomerService {
     const response = await customerEndpoint.verifyPhoneOtp({ phone, code });
     if (response.success && response.data) return response.data.verified;
     throw new Error(response.message || "Failed to verify OTP");
+  }
+
+  /**
+   * Update a customer's profile.
+   * Pass only the fields you want to change — the rest are left untouched.
+   */
+  async updateCustomer(
+    id: string,
+    payload: UpdateCustomerPayload,
+  ): Promise<CustomerData> {
+    try {
+      const response = await customerEndpoint.update(id, payload);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.message || "Failed to update customer");
+    } catch (error: any) {
+      console.error(`Failed to update customer ${id}:`, error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update customer";
+      throw error;
+    }
   }
 }
 
