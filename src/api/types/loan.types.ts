@@ -144,6 +144,7 @@ export interface AccountData {
   id: string;
   accountNumber: string;
   disbursedAmount: number;
+  interestAmount?: number;
   totalCollected: number;
   remainingBalance: number;
   createdAt: string;
@@ -206,6 +207,7 @@ export interface Loan {
   settledDate?: string;
   totalPaidAmount: number;
   outstandingBalance: number;
+  totalInterest?: number;
   nextDueDate?: string;
   nextDueAmount?: number;
   purpose: string;
