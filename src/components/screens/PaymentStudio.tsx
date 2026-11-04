@@ -1214,6 +1214,23 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                     </span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-slate-500">Total Interest:</span>
+                    <span className="font-medium text-slate-800">
+                      {formatCurrency(
+                        currentLoan?.account?.interestAmount || 0,
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Total:</span>
+                    <span className="font-medium text-slate-800">
+                      {formatCurrency(
+                        Number(currentLoan?.account?.disbursedAmount ?? 0) +
+                          Number(currentLoan?.account?.interestAmount ?? 0),
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-slate-500">Total Collected:</span>
                     <span className="font-medium text-emerald-600">
                       {formatCurrency(currentLoan?.totalPaidAmount || 0)}

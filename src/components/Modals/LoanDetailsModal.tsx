@@ -113,7 +113,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 overflow-y-auto">
       <div className="flex min-h-full items-start sm:items-center justify-center p-4">
-        <div className="bg-white border border-slate-200 rounded-xl max-w-4xl w-full max-h-[92dvh] sm:max-h-[90dvh] flex flex-col shadow-lg animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl max-w-6xl w-full max-h-[92dvh] sm:max-h-[90dvh] flex flex-col shadow-lg animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
           {/* Header */}
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center gap-2 justify-between shrink-0">
             <div className="flex justify-between items-start">
@@ -180,14 +180,14 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
           </div>
 
           {/* Loan Summary Grid */}
-          <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs shrink-0">
+          <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs shrink-0">
             <div>
               <span className="text-slate-500 block text-[10px] uppercase font-bold">
-                Disbursed Amount
+                {loan.account?.disbursedAmount == 0 ? "Requested Amount" : "Disbursed Amount"}
               </span>
               <div className="flex flex-col">
                 <span className="font-extrabold text-slate-900 text-xs">
-                  {formatCurrency(loan.account?.disbursedAmount!)}
+                  {loan.account?.disbursedAmount == 0 ? formatCurrency(loan.requestedAmount) : formatCurrency(loan.account?.disbursedAmount!)}
                 </span>
                 <span className="text-[10px] text-bold">
                   {loan.disbursedDate ? loan.disbursedDate : "Not disbursed"}
@@ -201,6 +201,14 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
               <span className="font-bold text-slate-800 text-xs">
                 {loan.interestRatePerAnnum / 12}% P.M. (
                 {getInterestMethodLabel(loan.interestMethod)})
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                Total Interest Amount
+              </span>
+              <span className="font-bold text-slate-800 text-xs">
+                {formatCurrency(loan.account?.interestAmount!)}
               </span>
             </div>
             <div>
