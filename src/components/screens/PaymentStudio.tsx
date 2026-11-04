@@ -297,14 +297,51 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
       const loan = await loanService.getLoanById(loanId);
       setCurrentLoan(loan);
 
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString().split("T")[0];
+
+      // All overdue installments (due date before today, still unpaid)
+      const overdueInstallments = loan.installments.filter(
+        (i) =>
+          i.status !== "Paid" &&
+          Number(i.remainingAmount) > 0 &&
+          new Date(i.dueDate) < today,
+      );
+
+      const overdueTotal = overdueInstallments.reduce(
+        (sum, i) => sum + Number(i.remainingAmount || 0),
+        0,
+      );
+
+      const penalty = Number(loan.penaltyAmount ?? 0);
+
       const nextInstallment = loan.installments.find(
         (i) => i.status !== "Paid",
       );
 
-      const due = nextInstallment?.remainingAmount || loan.nextDueAmount || 0;
+      let defaultDueDate = nextInstallment?.dueDate || "";
 
-      setPaymentAmount(due.toString());
-      setDueDate(nextInstallment?.dueDate || "");
+      // If the next due date is in the past, show today
+      if (defaultDueDate && new Date(defaultDueDate) < today) {
+        defaultDueDate = todayISO;
+      }
+
+      // Default payment amount:
+      //   - past-due loan → overdue total + penalty
+      //   - otherwise → next installment remaining
+      let defaultAmount = 0;
+      if (overdueInstallments.length > 0) {
+        defaultAmount = Math.round((overdueTotal + penalty) * 100) / 100;
+      } else {
+        defaultAmount =
+          Number(nextInstallment?.remainingAmount) ||
+          Number(loan.nextDueAmount) ||
+          0;
+      }
+
+      setPaymentAmount(defaultAmount.toString());
+      setDueDate(defaultDueDate);
       setReferenceNumber(`REF-${Math.floor(100000 + Math.random() * 900000)}`);
     } catch (error) {
       console.error("Failed to fetch loan:", error);
@@ -387,8 +424,25 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
   const currentUnpaidInstallment = currentLoan?.installments.find(
     (i) => i.status !== "Paid",
   );
+  const overduePenalty = Number(currentLoan?.penaltyAmount ?? 0);
+
+  const overdueInstallmentsList =
+    currentLoan?.installments?.filter(
+      (i) =>
+        i.status !== "Paid" &&
+        Number(i.remainingAmount) > 0 &&
+        new Date(i.dueDate) < new Date(new Date().setHours(0, 0, 0, 0)),
+    ) ?? [];
+
+  const overduePrincipalInterest = overdueInstallmentsList.reduce(
+    (sum, i) => sum + Number(i.remainingAmount || 0),
+    0,
+  );
+
+  const hasOverdue = overdueInstallmentsList.length > 0;
+
   const projectedBalance = currentLoan
-    ? Math.max(0, currentLoan.outstandingBalance - Number(paymentAmount))
+    ? Math.max(0, currentLoan.outstandingBalance - Number(paymentAmount) - overduePenalty)
     : 0;
 
   const recentPayments = currentLoan?.payments
@@ -1047,6 +1101,11 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                       disabled
                       required
                     />
+                    {hasOverdue && (
+                      <p className="text-[10px] text-rose-600 mt-0.5">
+                        Loan is past due — payment targets today's date.
+                      </p>
+                    )}
                   </div>
 
                   {/* Payment Method */}
@@ -1144,6 +1203,39 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                   <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
                     Balance Impact Preview
                   </span>
+
+                  {hasOverdue && (
+                    <>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">
+                          Overdue P+I ({overdueInstallmentsList.length}):
+                        </span>
+                        <span className="font-medium text-rose-700">
+                          {formatCurrency(overduePrincipalInterest)}
+                        </span>
+                      </div>
+                      {overduePenalty > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500">
+                            Overdue Penalty:
+                          </span>
+                          <span className="font-medium text-amber-700">
+                            + {formatCurrency(overduePenalty)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Total Overdue:</span>
+                        <span className="font-bold text-rose-900">
+                          {formatCurrency(
+                            overduePrincipalInterest + overduePenalty,
+                          )}
+                        </span>
+                      </div>
+                      <div className="h-px bg-slate-200 my-1" />
+                    </>
+                  )}
+
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Current Outstanding:</span>
                     <span className="font-medium text-slate-800">
@@ -1153,7 +1245,7 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Applying Payment:</span>
                     <span className="font-semibold text-emerald-600">
-                      - {formatCurrency(Number(paymentAmount))}
+                      - {formatCurrency((Number(paymentAmount) - overduePenalty) > 0 ? Number(paymentAmount) - overduePenalty : 0)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/60">
@@ -1315,6 +1407,22 @@ export const PaymentStudio: React.FC<PaymentStudioProps> = ({
               label: "Payment Amount",
               value: formatCurrency(Number(paymentAmount)),
             },
+            ...(hasOverdue
+              ? [
+                  {
+                    label: "Includes Overdue P+I",
+                    value: formatCurrency(overduePrincipalInterest),
+                  },
+                  ...(overduePenalty > 0
+                    ? [
+                        {
+                          label: "Includes Overdue Penalty",
+                          value: formatCurrency(overduePenalty),
+                        },
+                      ]
+                    : []),
+                ]
+              : []),
             {
               label: "Payment Method",
               value: getPaymentMethodLabel(paymentMethod),
