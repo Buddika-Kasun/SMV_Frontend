@@ -416,12 +416,20 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       ? Math.round((paidInstallments / totalInstallments) * 100)
       : 0;
 
+  // -------- Penalty from the loan --------
+  const outstandingPenalty = Math.max(
+    0,
+    Number(currentLoan?.penaltyAmount ?? 0),
+  );
+
   // -------- Reduction math --------
   const numericReduction = Math.max(0, parseFloat(reductionAmount) || 0);
 
-  // Base payoff uses the loan's total unpaid (principal + interest).
-  // No penalty applied.
-  const baseSettlementAmount = totalRemainingAmount;
+  // Base payoff = unpaid P+I + outstanding penalty
+  const unpaidPI = totalRemainingAmount;
+  const baseSettlementAmount =
+    Math.round((unpaidPI + outstandingPenalty) * 100) / 100;
+
   const totalSettlementWithReduction = Math.max(
     0,
     baseSettlementAmount - numericReduction,
@@ -1059,19 +1067,36 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                         Total Unpaid (Principal + Interest)
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Remaining amount owed on this contract
+                        Remaining P + I on this contract
                       </span>
                     </div>
                     <span className="font-bold text-slate-900 text-sm">
-                      {formatCurrency(totalRemainingAmount)}
+                      {formatCurrency(unpaidPI)}
                     </span>
                   </div>
+
+                  {/* Outstanding Penalty */}
+                  {outstandingPenalty > 0 && (
+                    <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-200/60 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-medium text-amber-800 block">
+                          Outstanding Penalty
+                        </span>
+                        <span className="text-[10px] text-amber-600">
+                          Accrued overdue penalty
+                        </span>
+                      </div>
+                      <span className="font-bold text-amber-700 text-sm">
+                        + {formatCurrency(outstandingPenalty)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Final Payoff (before reduction) */}
                   <div className="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                     <div>
                       <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider block">
-                        FINAL PAYOFF AMOUNT
+                        BASE PAYOFF AMOUNT
                       </span>
                       <p className="text-xs text-slate-300 mt-0.5">
                         Total required to close loan contract in full today.
@@ -1096,12 +1121,9 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
                     </p>
                     <input
                       type="number"
-                      // min="0"
                       step="0.01"
                       value={reductionAmount}
-                      onChange={(e) =>
-                        setReductionAmount(e.target.value)
-                      }
+                      onChange={(e) => setReductionAmount(e.target.value)}
                       placeholder="0"
                       className="w-full bg-white text-slate-900 font-bold text-sm py-2 px-3 rounded-lg border border-blue-200/80 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
                     />
@@ -1289,9 +1311,17 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
               value: currentLoan.loanNumber || currentLoan.id,
             },
             {
-              label: "Total Unpaid (P + I)",
-              value: formatCurrency(totalRemainingAmount),
+              label: "Unpaid P + I",
+              value: formatCurrency(unpaidPI),
             },
+            ...(outstandingPenalty > 0
+              ? [
+                  {
+                    label: "Outstanding Penalty",
+                    value: formatCurrency(outstandingPenalty),
+                  },
+                ]
+              : []),
             ...(numericReduction > 0
               ? [
                   {
@@ -1323,4 +1353,4 @@ export const EarlySettlementStudio: React.FC<EarlySettlementStudioProps> = ({
       )}
     </div>
   );
-};
+};;

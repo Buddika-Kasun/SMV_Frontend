@@ -175,6 +175,18 @@ export interface LoanDocument {
   notes: string | null;
 }
 
+export interface PenaltyPaymentRecord {
+  id: string;
+  loanId: string;
+  paymentId?: string | null;
+  paidDate: string;
+  paidAmount: number;
+  remainingAmount: number;
+  penaltySnapshot: number;
+  createdAt?: string;
+  createdById?: string | null;
+}
+
 export interface Loan {
   id: string;
   loanNumber: string;
@@ -210,6 +222,9 @@ export interface Loan {
   totalInterest?: number;
   nextDueDate?: string;
   nextDueAmount?: number;
+  penaltyAmount?: number;
+  penaltyLastAccrued?: string;
+  penaltyPayments?: PenaltyPaymentRecord[];
   purpose: string;
   // creditScore: number;
   createdAt: string;

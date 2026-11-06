@@ -30,9 +30,9 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const [loan, setLoan] = useState<Loan | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"schedule" | "payments" | "kyc">(
-    "schedule",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "schedule" | "payments" | "kyc" | "penalty"
+  >("schedule");
 
   useEffect(() => {
     let isMounted = true;
@@ -180,7 +180,7 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
           </div>
 
           {/* Loan Summary Grid */}
-          <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs shrink-0">
+          {/* <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs shrink-0">
             <div>
               <span className="text-slate-500 block text-[10px] uppercase font-bold">
                 {loan.account?.disbursedAmount == 0 ? "Requested Amount" : "Disbursed Amount"}
@@ -227,7 +227,157 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 {formatCurrency(loan.outstandingBalance)}
               </span>
             </div>
+          </div> */}
+          {/* Loan Summary Grid */}
+          <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs shrink-0">
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                {loan.account?.disbursedAmount == 0
+                  ? "Requested Amount"
+                  : "Disbursed Amount"}
+              </span>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-slate-900 text-xs">
+                  {loan.account?.disbursedAmount == 0
+                    ? formatCurrency(loan.requestedAmount)
+                    : formatCurrency(loan.account?.disbursedAmount!)}
+                </span>
+                <span className="text-[10px] font-bold text-slate-500">
+                  {loan.disbursedDate ? loan.disbursedDate : "Not disbursed"}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                Interest Rate & Method
+              </span>
+              <span className="font-bold text-slate-800 text-xs">
+                {loan.interestRatePerAnnum / 12}% P.M. (
+                {getInterestMethodLabel(loan.interestMethod)})
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                Total Interest Amount
+              </span>
+              <span className="font-bold text-slate-800 text-xs">
+                {formatCurrency(
+                  loan.installments?.reduce(
+                    (sum, i) => sum + Number(i.interestAmount || 0),
+                    0,
+                  ) ?? 0,
+                )}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                Total Repaid To Date
+              </span>
+              <span className="font-extrabold text-teal-700 text-xs">
+                {formatCurrency(loan.totalPaidAmount)}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold">
+                Outstanding Balance
+              </span>
+              <span className="font-extrabold text-blue-600 text-xs">
+                {formatCurrency(loan.outstandingBalance)}
+              </span>
+            </div>
           </div>
+
+          {/* Overdue summary — only when loan is Overdue */}
+          {loan.status === "Overdue" &&
+            (() => {
+              const today = new Date(new Date().setHours(0, 0, 0, 0));
+
+              // Total due = sum of remaining amounts on overdue installments
+              const overdueInstallments =
+                loan.installments?.filter(
+                  (i) =>
+                    i.status !== "Paid" &&
+                    Number(i.remainingAmount) > 0 &&
+                    new Date(i.dueDate) < today,
+                ) ?? [];
+
+              const totalDue = overdueInstallments.reduce(
+                (sum, i) => sum + Number(i.remainingAmount || 0),
+                0,
+              );
+
+              // Days from earliest overdue due date to today
+              const earliestDue = overdueInstallments
+                .map((i) => new Date(i.dueDate).getTime())
+                .sort((a, b) => a - b)[0];
+
+              const daysOverdue = earliestDue
+                ? Math.max(
+                    0,
+                    Math.floor((today.getTime() - earliestDue) / 86_400_000),
+                  )
+                : 0;
+
+              const monthPenaltyRate =
+                loan.repaymentFrequency === "Daily" ? 5 : 10;
+
+              // Penalty rate: 5% for Daily, 10% for others
+              // const annualPenaltyRate = monthPenaltyRate * 12;
+
+              // Penalty = totalDue * (annualPenaltyRate / 100) / 365 * daysOverdue
+              // const penalty =
+              //   Math.round(
+              //     ((totalDue * (annualPenaltyRate / 100)) / 365) *
+              //       daysOverdue *
+              //       100,
+              //   ) / 100;
+              const penalty = loan.penaltyAmount || 0;
+
+              const totalRemainingToPay =
+                Math.round((totalDue + penalty) * 100) / 100;
+
+              return (
+                <div className="px-4 py-3 bg-rose-50/60 border-b border-rose-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs shrink-0">
+                  <div>
+                    <span className="text-rose-700 block text-[10px] uppercase font-bold">
+                      Total Due
+                    </span>
+                    <span className="font-extrabold text-rose-900 text-sm">
+                      {formatCurrency(totalDue)}
+                    </span>
+                    <span className="text-[10px] text-rose-600 block">
+                      {overdueInstallments.length} overdue installment
+                      {overdueInstallments.length === 1 ? "" : "s"} ·{" "}
+                      {daysOverdue} day{daysOverdue === 1 ? "" : "s"} overdue
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-rose-700 block text-[10px] uppercase font-bold">
+                      Penalty (Total due × {monthPenaltyRate}% p.m. ×{" "}
+                      {daysOverdue} day
+                      {daysOverdue === 1 ? "" : "s"} + Remaining Penalty)
+                    </span>
+                    <span className="font-extrabold text-amber-700 text-sm">
+                      {formatCurrency(penalty)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-rose-700 block text-[10px] uppercase font-bold">
+                      Total Remaining to Pay
+                    </span>
+                    <span className="font-extrabold text-rose-900 text-sm">
+                      {formatCurrency(totalRemainingToPay)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* Modal Inner Tabs */}
           <div className="flex border-b border-slate-200 bg-white px-4 pt-2 overflow-x-auto shrink-0">
@@ -261,6 +411,18 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             >
               Verified KYC Info
             </button>
+            {loan.penaltyPayments && loan.penaltyPayments.length > 0 && (
+              <button
+                onClick={() => setActiveTab("penalty")}
+                className={`px-3 py-1.5 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                  activeTab === "penalty"
+                    ? "border-rose-600 text-rose-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Penalty History ({loan.penaltyPayments?.length || 0})
+              </button>
+            )}
           </div>
 
           {/* Tab Contents */}
@@ -482,6 +644,140 @@ export const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       </p>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Penalty Payment History */}
+            {activeTab === "penalty" && (
+              <div className="space-y-3 text-xs">
+                {/* Live penalty summary — always visible on this tab */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-amber-50/70 border border-amber-200/60 rounded-lg p-3">
+                    <span className="text-[10px] text-amber-700 uppercase font-bold block">
+                      Accrued Total Penalty
+                    </span>
+                    <span className="font-extrabold text-amber-900 text-sm">
+                      {formatCurrency(
+                        Number(loan.penaltyAmount ?? 0) +
+                          (loan.penaltyPayments?.reduce(
+                            (s, p) => s + Number(p.paidAmount || 0),
+                            0,
+                          ) ?? 0),
+                      )}
+                    </span>
+                    <span className="text-[10px] text-amber-600 block mt-0.5">
+                      Before any payments
+                    </span>
+                  </div>
+
+                  <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-lg p-3">
+                    <span className="text-[10px] text-emerald-700 uppercase font-bold block">
+                      Penalty Paid
+                    </span>
+                    <span className="font-extrabold text-emerald-900 text-sm">
+                      {formatCurrency(
+                        loan.penaltyPayments?.reduce(
+                          (s, p) => s + Number(p.paidAmount || 0),
+                          0,
+                        ) ?? 0,
+                      )}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 block mt-0.5">
+                      {loan.penaltyPayments?.length || 0} payment
+                      {(loan.penaltyPayments?.length || 0) === 1
+                        ? ""
+                        : "s"}{" "}
+                      applied
+                    </span>
+                  </div>
+
+                  <div className="bg-rose-50/70 border border-rose-200/60 rounded-lg p-3">
+                    <span className="text-[10px] text-rose-700 uppercase font-bold block">
+                      Remaining Penalty
+                    </span>
+                    <span className="font-extrabold text-rose-900 text-sm">
+                      {formatCurrency(loan.penaltyAmount ?? 0)}
+                    </span>
+                    <span className="text-[10px] text-rose-600 block mt-0.5">
+                      {loan.penaltyLastAccrued
+                        ? `Accrued through ${loan.penaltyLastAccrued.slice(0, 10)}`
+                        : "Not accrued yet"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* History list */}
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 text-xs">
+                      Penalty Payment Ledger
+                    </h4>
+                    <span className="text-[10px] text-slate-500">
+                      {loan.penaltyPayments?.length || 0} entr
+                      {(loan.penaltyPayments?.length || 0) === 1 ? "y" : "ies"}
+                    </span>
+                  </div>
+
+                  {loan.penaltyPayments && loan.penaltyPayments.length > 0 ? (
+                    <div className="space-y-2">
+                      {loan.penaltyPayments
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            new Date(b.paidDate).getTime() -
+                            new Date(a.paidDate).getTime(),
+                        )
+                        .map((p) => (
+                          <div
+                            key={p.id}
+                            className="bg-white p-3 rounded-lg border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-emerald-700 text-xs">
+                                  + {formatCurrency(p.paidAmount)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {new Date(p.paidDate)
+                                    .toISOString()
+                                    .slice(0, 10)}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                Snapshot before:{" "}
+                                <span className="font-mono">
+                                  {formatCurrency(p.penaltySnapshot)}
+                                </span>
+                                {" · "}
+                                Remaining after:{" "}
+                                <span className="font-mono">
+                                  {formatCurrency(p.remainingAmount)}
+                                </span>
+                              </div>
+                              {p.paymentId && (
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  Ref: {p.paymentId.slice(0, 8)}…
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className="text-[10px] text-slate-400 block">
+                                Applied to penalty
+                              </span>
+                              <span className="font-semibold text-slate-700 text-xs">
+                                {formatCurrency(p.paidAmount)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      No penalty payments recorded for this loan yet.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
